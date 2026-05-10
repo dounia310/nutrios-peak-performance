@@ -123,14 +123,14 @@ function Diagnostic() {
             {step === 1 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Votre objectif</h2>
-                <p className="text-muted-foreground mb-8">Un seul cap pour calibrer le plan.</p>
+                <p className="text-muted-foreground mb-8">Choisissez jusqu'à <span className="text-foreground font-semibold">deux objectifs</span> pour combiner les approches.</p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {goals.map((g) => {
-                    const active = goal === g.id;
+                    const active = selectedGoals.includes(g.id);
                     return (
                       <button
                         key={g.id}
-                        onClick={() => setGoal(g.id)}
+                        onClick={() => toggleGoal(g.id)}
                         className={`text-left rounded-2xl p-6 border transition-all relative overflow-hidden group ${active ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}
                       >
                         <g.Icon className={`w-7 h-7 mb-4 ${active ? "text-accent" : "text-primary-glow"}`} />
@@ -141,6 +141,8 @@ function Diagnostic() {
                     );
                   })}
                 </div>
+                <p className="text-xs text-muted-foreground mt-4">{selectedGoals.length}/2 sélectionné(s)</p>
+
               </>
             )}
 
