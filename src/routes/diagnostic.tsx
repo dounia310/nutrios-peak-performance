@@ -36,23 +36,31 @@ function Diagnostic() {
   const [weight, setWeight] = useState<number | "">("");
   const [height, setHeight] = useState<number | "">("");
   const [gender, setGender] = useState<Gender | "">("");
-  const [goal, setGoal] = useState<Goal | "">("");
+  const [selectedGoals, setSelectedGoals] = useState<Goal[]>([]);
   const [sport, setSport] = useState<Sport | "">("");
   const [health, setHealth] = useState("");
 
   const total = 4;
   const canNext =
     (step === 0 && age && weight && height && gender) ||
-    (step === 1 && goal) ||
+    (step === 1 && selectedGoals.length > 0) ||
     (step === 2 && sport) ||
     step === 3;
+
+  const toggleGoal = (id: Goal) => {
+    setSelectedGoals((prev) => {
+      if (prev.includes(id)) return prev.filter((g) => g !== id);
+      if (prev.length >= 2) return [prev[1], id]; // garder max 2 (FIFO)
+      return [...prev, id];
+    });
+  };
 
   const next = () => {
     if (step < total - 1) setStep(step + 1);
     else {
       saveDiagnostic({
         age: Number(age), weight: Number(weight), height: Number(height),
-        gender: gender as Gender, goal: goal as Goal, sport: sport as Sport, health,
+        gender: gender as Gender, goals: selectedGoals, sport: sport as Sport, health,
       });
       navigate({ to: "/results" });
     }
