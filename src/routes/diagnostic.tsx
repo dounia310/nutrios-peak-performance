@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Dumbbell, Footprints, Heart, Waves, Target, TrendingDown, Zap, Sparkles, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Dumbbell, Footprints, Heart, Waves, Target, TrendingDown, Zap, Sparkles, Check, PersonStanding } from "lucide-react";
 import { saveDiagnostic, type Goal, type Sport, type Gender } from "@/lib/diagnostic";
 
 export const Route = createFileRoute("/diagnostic")({
@@ -24,6 +24,7 @@ const goals: { id: Goal; label: string; desc: string; Icon: typeof Target }[] = 
 const sports: { id: Sport; label: string; Icon: typeof Dumbbell }[] = [
   { id: "musculation", label: "Musculation", Icon: Dumbbell },
   { id: "running", label: "Running", Icon: Footprints },
+  { id: "walking", label: "Marche active", Icon: PersonStanding },
   { id: "yoga", label: "Yoga", Icon: Heart },
   { id: "natation", label: "Natation", Icon: Waves },
 ];
@@ -35,23 +36,31 @@ function Diagnostic() {
   const [weight, setWeight] = useState<number | "">("");
   const [height, setHeight] = useState<number | "">("");
   const [gender, setGender] = useState<Gender | "">("");
-  const [goal, setGoal] = useState<Goal | "">("");
+  const [selectedGoals, setSelectedGoals] = useState<Goal[]>([]);
   const [sport, setSport] = useState<Sport | "">("");
   const [health, setHealth] = useState("");
 
   const total = 4;
   const canNext =
     (step === 0 && age && weight && height && gender) ||
-    (step === 1 && goal) ||
+    (step === 1 && selectedGoals.length > 0) ||
     (step === 2 && sport) ||
     step === 3;
+
+  const toggleGoal = (id: Goal) => {
+    setSelectedGoals((prev) => {
+      if (prev.includes(id)) return prev.filter((g) => g !== id);
+      if (prev.length >= 2) return [prev[1], id]; // garder max 2 (FIFO)
+      return [...prev, id];
+    });
+  };
 
   const next = () => {
     if (step < total - 1) setStep(step + 1);
     else {
       saveDiagnostic({
         age: Number(age), weight: Number(weight), height: Number(height),
-        gender: gender as Gender, goal: goal as Goal, sport: sport as Sport, health,
+        gender: gender as Gender, goals: selectedGoals, sport: sport as Sport, health,
       });
       navigate({ to: "/results" });
     }
@@ -114,14 +123,14 @@ function Diagnostic() {
             {step === 1 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Votre objectif</h2>
-                <p className="text-muted-foreground mb-8">Un seul cap pour calibrer le plan.</p>
+                <p className="text-muted-foreground mb-8">Choisissez jusqu'à <span className="text-foreground font-semibold">deux objectifs</span> pour combiner les approches.</p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {goals.map((g) => {
-                    const active = goal === g.id;
+                    const active = selectedGoals.includes(g.id);
                     return (
                       <button
                         key={g.id}
-                        onClick={() => setGoal(g.id)}
+                        onClick={() => toggleGoal(g.id)}
                         className={`text-left rounded-2xl p-6 border transition-all relative overflow-hidden group ${active ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}
                       >
                         <g.Icon className={`w-7 h-7 mb-4 ${active ? "text-accent" : "text-primary-glow"}`} />
@@ -132,6 +141,8 @@ function Diagnostic() {
                     );
                   })}
                 </div>
+                <p className="text-xs text-muted-foreground mt-4">{selectedGoals.length}/2 sélectionné(s)</p>
+
               </>
             )}
 
