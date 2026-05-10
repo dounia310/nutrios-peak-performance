@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Dumbbell, Footprints, Heart, Waves, Target, TrendingDown, Zap, Sparkles, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Dumbbell, Footprints, Heart, Waves, Target, TrendingDown, Zap, Sparkles, Check, PersonStanding } from "lucide-react";
 import { saveDiagnostic, type Goal, type Sport, type Gender } from "@/lib/diagnostic";
 
 export const Route = createFileRoute("/diagnostic")({
