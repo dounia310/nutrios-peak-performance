@@ -24,6 +24,7 @@ const goals: { id: Goal; label: string; desc: string; Icon: typeof Target }[] = 
 const sports: { id: Sport; label: string; Icon: typeof Dumbbell }[] = [
   { id: "musculation", label: "Musculation", Icon: Dumbbell },
   { id: "running", label: "Running", Icon: Footprints },
+  { id: "walking", label: "Marche active", Icon: PersonStanding },
   { id: "yoga", label: "Yoga", Icon: Heart },
   { id: "natation", label: "Natation", Icon: Waves },
 ];
