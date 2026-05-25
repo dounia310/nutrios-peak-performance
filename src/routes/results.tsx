@@ -1,384 +1,353 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Activity, Mail, MessageCircle, Lock, Check, Sparkles, Flame, Beef, Wheat, Droplet, CalendarDays, Sunrise, Sun, Moon, Apple } from "lucide-react";
-import { z } from "zod";
-import { loadDiagnostic, calcBMI, calcBMR, calcPlanDuration, calcMacros, GOAL_LABEL, SPORT_LABEL, type DiagnosticData, clearDiagnostic } from "@/lib/diagnostic";
+import { motion } from "framer-motion";
+import {
+  Activity, Target, Flame, ChefHat, Clock, Brain,
+  CheckCircle2, TrendingUp, AlertTriangle, Sparkles,
+  ArrowLeft
+} from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer
+} from "recharts";
+import { loadDiagnostic, calcBMI, calcBMR, GOAL_LABEL, SPORT_LABEL, type DiagnosticData } from "@/lib/diagnostic";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
     meta: [
-      { title: "Vos résultats — NutriOs" },
-      { name: "description", content: "IMC, métabolisme basal, macros et plan détaillé personnalisé selon vos données." },
+      { title: "Votre plan — NutriOs" },
+      { name: "description", content: "Plan nutritionnel personnalisé avec repas illustrés." },
     ],
   }),
   component: Results,
 });
 
-const leadSchema = z.object({
-  name: z.string().trim().min(1, "Nom requis").max(80),
-  email: z.string().trim().email("Email invalide").max(200),
-  whatsapp: z.string().trim().min(6, "Numéro requis").max(30).regex(/^[+0-9 ()-]+$/, "Format invalide"),
-});
+const MEAL_IMAGES: Record<string, string> = {
+  "Smoothie vert protéiné": "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400&h=300&fit=crop",
+  "Yaourt grec + fruits rouges": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&h=300&fit=crop",
+  "Buddha bowl quinoa": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop",
+  "Œufs durs + crudités": "https://blog.fermedebeaumont.com/wp-content/uploads/AdobeStock_238742792-scaled.jpeg",
+  "Poisson vapeur + légumes": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=400&h=300&fit=crop",
+  "Porridge protéiné": "https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=400&h=300&fit=crop",
+  "Shaker + fruits secs": "https://images.unsplash.com/photo-1593062096033-9a26b09da705?w=400&h=300&fit=crop",
+  "Riz poulet basmati": "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400&h=300&fit=crop",
+  "Wrap thon-avocat": "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&h=300&fit=crop",
+  "Steak patate douce": "https://images.unsplash.com/photo-1432139509613-5c4255a1d1f8?w=400&h=300&fit=crop",
+  "Porridge énergétique": "https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=400&h=300&fit=crop",
+  "Barre énergétique maison": "https://images.unsplash.com/photo-1604329760661-e71dc83f8dea?w=400&h=300&fit=crop",
+  "Pâtes complètes saumon": "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=400&h=300&fit=crop",
+  "Smoothie récupération": "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400&h=300&fit=crop",
+  "Riz sauté tofu": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop",
+};
+
+const MEAL_PLANS: Record<string, { meals: { time: string; recipe: string; details: string; calories: number; image: string }[] }> = {
+  perte: {
+    meals: [
+      { time: "Petit-déjeuner (7h)", recipe: "Smoothie vert protéiné", details: "Épinards, banane, whey, lait d'amande, chia", calories: 350, image: MEAL_IMAGES["Smoothie vert protéiné"] },
+      { time: "Collation (10h)", recipe: "Yaourt grec + fruits rouges", details: "Yaourt 0%, myrtilles, amandes", calories: 200, image: MEAL_IMAGES["Yaourt grec + fruits rouges"] },
+      { time: "Déjeuner (13h)", recipe: "Buddha bowl quinoa", details: "Quinoa, poulet, avocat, légumes rôtis", calories: 450, image: MEAL_IMAGES["Buddha bowl quinoa"] },
+      { time: "Collation (16h)", recipe: "Œufs durs + crudités", details: "2 œufs, carottes, concombre, houmous", calories: 250, image: MEAL_IMAGES["Œufs durs + crudités"] },
+      { time: "Dîner (19h)", recipe: "Poisson vapeur + légumes", details: "Cabillaud, brocoli, haricots verts, riz", calories: 400, image: MEAL_IMAGES["Poisson vapeur + légumes"] },
+    ]
+  },
+  muscle: {
+    meals: [
+      { time: "Petit-déjeuner (7h)", recipe: "Porridge protéiné", details: "Avoine, whey, beurre cacahuète, banane", calories: 550, image: MEAL_IMAGES["Porridge protéiné"] },
+      { time: "Collation (10h)", recipe: "Shaker + fruits secs", details: "Whey, lait, amandes, noix, dattes", calories: 400, image: MEAL_IMAGES["Shaker + fruits secs"] },
+      { time: "Déjeuner (13h)", recipe: "Riz poulet basmati", details: "Poulet 200g, riz, légumes sautés", calories: 650, image: MEAL_IMAGES["Riz poulet basmati"] },
+      { time: "Collation (16h)", recipe: "Wrap thon-avocat", details: "Tortilla, thon, avocat, fromage frais", calories: 450, image: MEAL_IMAGES["Wrap thon-avocat"] },
+      { time: "Dîner (19h)", recipe: "Steak patate douce", details: "Rumsteck 200g, patate douce, épinards", calories: 600, image: MEAL_IMAGES["Steak patate douce"] },
+    ]
+  },
+  endurance: {
+    meals: [
+      { time: "Petit-déjeuner (6h30)", recipe: "Porridge énergétique", details: "Avoine, fruits secs, miel, banane", calories: 500, image: MEAL_IMAGES["Porridge énergétique"] },
+      { time: "Collation (9h)", recipe: "Barre énergétique maison", details: "Dattes, noix, cacao, avoine", calories: 300, image: MEAL_IMAGES["Barre énergétique maison"] },
+      { time: "Déjeuner (12h30)", recipe: "Pâtes complètes saumon", details: "Pâtes, saumon, légumes verts, huile olive", calories: 600, image: MEAL_IMAGES["Pâtes complètes saumon"] },
+      { time: "Collation (16h)", recipe: "Smoothie récupération", details: "Lait amande, banane, miel, spiruline", calories: 350, image: MEAL_IMAGES["Smoothie récupération"] },
+      { time: "Dîner (19h30)", recipe: "Riz sauté tofu", details: "Riz, tofu, légumes asiatiques, soja", calories: 500, image: MEAL_IMAGES["Riz sauté tofu"] },
+    ]
+  },
+};
 
 function Results() {
   const navigate = useNavigate();
   const [data, setData] = useState<DiagnosticData | null>(null);
-  const [modal, setModal] = useState<null | "wa" | "email">(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [wa, setWa] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [readinessScore, setReadinessScore] = useState(0);
+  const [activeTab, setActiveTab] = useState<"overview" | "meals">("overview");
+  const [saved, setSaved] = useState(false);
+  const [dailyTasks, setDailyTasks] = useState([
+    { id: "protein", label: "Protéines", target: "Objectif", done: false },
+    { id: "water", label: "Hydratation", target: "3L", done: false },
+    { id: "workout", label: "Entraînement", target: "Session", done: false },
+    { id: "sleep", label: "Sommeil", target: "7-8h", done: false },
+  ]);
 
   useEffect(() => {
     const d = loadDiagnostic();
-    if (!d || !d.age || !d.weight || !d.height || !d.gender || !d.goals || !d.goals.length || !d.sport) {
+    if (!d || !d.age || !d.weight || !d.height || !d.goal || !d.sport) {
       navigate({ to: "/diagnostic" });
       return;
     }
     setData(d as DiagnosticData);
   }, [navigate]);
 
+  // 1. CALCULS MÉTABOLIQUES (avec durée adaptative)
   const computed = useMemo(() => {
     if (!data) return null;
     const bmi = calcBMI(data.weight, data.height);
     const bmr = calcBMR(data.weight, data.height, data.age, data.gender);
-    const duration = calcPlanDuration(bmi, data.goals);
-    const macros = calcMacros(bmr, data.sport, data.goals, data.weight);
-    return { bmi, bmr, duration, macros };
+    const tdee = Math.round(bmr * 1.55);
+
+    // Calories adaptées à l'IMC
+    let targetCal: number;
+    let proteinPct: number;
+    if (data.goal === "perte") {
+      if (bmi >= 35) targetCal = tdee - 750;
+      else if (bmi >= 30) targetCal = tdee - 600;
+      else if (bmi >= 27) targetCal = tdee - 500;
+      else targetCal = tdee - 400;
+      proteinPct = 0.40;
+    } else if (data.goal === "muscle") {
+      targetCal = tdee + 300;
+      proteinPct = 0.35;
+    } else {
+      targetCal = tdee;
+      proteinPct = 0.30;
+    }
+
+    const proteinG = Math.round((targetCal * proteinPct) / 4);
+    const carbsG = Math.round((targetCal * (1 - proteinPct - 0.25)) / 4);
+    const fatsG = Math.round((targetCal * 0.25) / 9);
+
+    // Durée adaptative
+    let duration: string;
+    let weeklyChange: number;
+    if (data.goal === "perte") {
+      if (bmi >= 35) { duration = "24-36 semaines"; weeklyChange = -1.0; }
+      else if (bmi >= 30) { duration = "20-28 semaines"; weeklyChange = -0.8; }
+      else if (bmi >= 27) { duration = "16-24 semaines"; weeklyChange = -0.6; }
+      else { duration = "12-16 semaines"; weeklyChange = -0.5; }
+    } else if (data.goal === "muscle") {
+      duration = "12-20 semaines"; weeklyChange = 0.3;
+    } else if (data.goal === "endurance") {
+      duration = "10-14 semaines"; weeklyChange = -0.2;
+    } else {
+      duration = "8-12 semaines"; weeklyChange = 0;
+    }
+
+    return { bmi, bmr, tdee, targetCal, proteinG, carbsG, fatsG, duration, weeklyChange };
   }, [data]);
 
-  if (!data || !computed) {
-    return <div className="min-h-screen pt-40 text-center text-muted-foreground">Chargement…</div>;
+  // 2. Plan repas
+  const mealPlan = data ? (MEAL_PLANS[data.goal] || MEAL_PLANS.endurance) : null;
+
+  // 3. Sauvegarde automatique
+  useEffect(() => {
+    if (data && computed && mealPlan && !saved) {
+      const saveToDB = async () => {
+        try {
+          await supabase.from("diagnostics").insert({
+            age: data.age, weight: data.weight, height: data.height,
+            gender: data.gender, goal: data.goal, sport: data.sport,
+            health_notes: data.health || null,
+            bmi: Number(computed.bmi.toFixed(2)),
+            bmr: Math.round(computed.bmr),
+            tdee: computed.tdee,
+            target_calories: computed.targetCal,
+            plan_duration: computed.duration,
+            created_at: new Date().toISOString(),
+          });
+          setSaved(true);
+        } catch (err) {
+          console.log("Sauvegarde locale");
+          setSaved(true);
+        }
+      };
+      saveToDB();
+    }
+  }, [data, computed, mealPlan, saved]);
+
+  const toggleTask = (id: string) => {
+    setDailyTasks(prev => {
+      const updated = prev.map(t => t.id === id ? { ...t, done: !t.done } : t);
+      setReadinessScore(Math.round((updated.filter(t => t.done).length / updated.length) * 100));
+      return updated;
+    });
+  };
+
+  const projectionData = useMemo(() => {
+    if (!data || !computed) return [];
+    const weeks = Math.min(parseInt(computed.duration) || 12, 36);
+    return Array.from({ length: weeks + 1 }, (_, i) => ({
+      week: `S${i + 1}`,
+      poids: parseFloat((data.weight + computed.weeklyChange * i).toFixed(1)),
+    }));
+  }, [data, computed]);
+
+  if (!data || !computed || !mealPlan) {
+    return (
+      <div className="min-h-screen pt-40 text-center text-muted-foreground">
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2 }}
+          className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full mx-auto" />
+      </div>
+    );
   }
 
-  const bmiCategory =
-    computed.bmi < 18.5 ? "Sous-poids" :
-    computed.bmi < 25 ? "Optimal" :
-    computed.bmi < 30 ? "Surpoids" : "Obésité";
-
-  const bmiColor = computed.bmi >= 18.5 && computed.bmi < 25 ? "text-primary-glow" : "text-accent";
-
-  const goalsLabel = data.goals.map((g) => GOAL_LABEL[g]).join(" + ");
-
-  const handleSubmit = async (mode: "wa" | "email") => {
-    const parsed = leadSchema.safeParse({ name, email, whatsapp: wa });
-    if (!parsed.success) {
-      const e: Record<string, string> = {};
-      parsed.error.issues.forEach((i) => { e[i.path[0] as string] = i.message; });
-      setErrors(e);
-      return;
-    }
-    setErrors({});
-    setSubmitting(true);
-    const { error } = await supabase.from("diagnostics").insert({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      whatsapp: parsed.data.whatsapp,
-      age: data.age,
-      weight: data.weight,
-      height: data.height,
-      gender: data.gender,
-      goal: data.goals.join(","),
-      sport: data.sport,
-      health_notes: data.health || null,
-      bmi: Number(computed.bmi.toFixed(2)),
-      bmr: Math.round(computed.bmr),
-      plan_duration: computed.duration,
-    });
-    setSubmitting(false);
-    if (error) {
-      setErrors({ form: "Une erreur est survenue. Réessayez." });
-      return;
-    }
-    setDone(true);
-    if (mode === "wa") {
-      const msg = `Bonjour NutriOs, mon IMC est de ${computed.bmi.toFixed(1)}, mon métabolisme basal est de ${Math.round(computed.bmr)} kcal et mes objectifs sont : ${goalsLabel}. Apport cible : ${computed.macros.calories} kcal/jour (P ${computed.macros.protein}g · G ${computed.macros.carbs}g · L ${computed.macros.fats}g). Plan demandé : ${computed.duration} semaines.`;
-      const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-      setTimeout(() => window.open(url, "_blank"), 600);
-    }
-  };
-
-  const reset = () => { clearDiagnostic(); navigate({ to: "/diagnostic" }); };
-
-  // Plan hebdomadaire type
-  const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-  const trainingFor = (i: number): string => {
-    const sport = SPORT_LABEL[data.sport];
-    const pattern = data.goals.includes("muscle")
-      ? ["Force haut", "Cardio léger", "Force bas", "Repos actif", "Full body", sport, "Récupération"]
-      : data.goals.includes("endurance")
-      ? [sport, "Renfo", sport + " long", "Repos", "Fractionné", sport, "Mobilité"]
-      : data.goals.includes("perte")
-      ? [sport, "Marche 45'", "HIIT", "Repos actif", sport, "Cardio modéré", "Yoga"]
-      : [sport, "Mobilité", sport, "Marche", "Yoga", sport, "Repos"];
-    return pattern[i];
-  };
+  const bmiCategory = computed.bmi < 18.5 ? "Sous-poids" : computed.bmi < 25 ? "Optimal" : computed.bmi < 30 ? "Surpoids" : "Obésité";
+  const carbPct = Math.round(((computed.carbsG * 4) / computed.targetCal) * 100);
+  const fatPct = Math.round(((computed.fatsG * 9) / computed.targetCal) * 100);
+  const protPct = Math.round(((computed.proteinG * 4) / computed.targetCal) * 100);
 
   return (
     <div className="min-h-screen pt-32 pb-20">
       <div className="mx-auto max-w-6xl px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <p className="text-xs uppercase tracking-[0.3em] text-accent mb-3">Synthèse métabolique</p>
-          <h1 className="font-display font-extrabold text-4xl md:text-6xl mb-4">
-            Votre <span className="text-gradient">empreinte nutritionnelle</span>
-          </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto">
-            Calculs basés sur l'équation Mifflin-St Jeor, validée cliniquement pour les athlètes.
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-12">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent mb-3">
+            {saved ? "✅ Plan sauvegardé" : "⏳ Sauvegarde..."}
           </p>
+          <h1 className="font-display font-extrabold text-4xl md:text-6xl mb-4">
+            Votre <span className="text-gradient">plan {GOAL_LABEL[data.goal]}</span>
+          </h1>
+          <p className="text-muted-foreground max-w-xl mx-auto text-lg">
+            {computed.duration} • {computed.targetCal.toLocaleString()} kcal/jour • {SPORT_LABEL[data.sport]}
+          </p>
+          <div className="flex justify-center gap-3 mt-6">
+            {(["overview", "meals"] as const).map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
+                  activeTab === tab ? "bg-gradient-emerald text-primary-foreground shadow-glow" : "glass hover:bg-surface"
+                }`}>
+                {tab === "overview" ? <Activity className="w-4 h-4" /> : <ChefHat className="w-4 h-4" />}
+                {tab === "overview" ? "Dashboard" : "Repas"}
+              </button>
+            ))}
+          </div>
         </motion.div>
 
-        <div className={`grid md:grid-cols-3 gap-6 mb-10 transition ${modal ? "blur-sm pointer-events-none" : ""}`}>
-          <MetricCard label="IMC" value={computed.bmi.toFixed(1)} sub={bmiCategory} subColor={bmiColor} formula="Poids / Taille²" />
-          <MetricCard label="Métabolisme basal" value={Math.round(computed.bmr).toLocaleString("fr-FR")} sub="kcal / jour" highlight formula="Mifflin-St Jeor" />
-          <MetricCard label="Plan recommandé" value={`${computed.duration}`} sub="semaines" subColor="text-accent" formula={`${goalsLabel} · ${SPORT_LABEL[data.sport]}`} />
-        </div>
-
-        {/* Profil détaillé */}
-        <div className={`rounded-3xl glass p-8 md:p-12 mb-10 transition ${modal ? "blur-sm pointer-events-none" : ""}`}>
-          <div className="flex items-center gap-3 mb-6">
-            <Activity className="w-5 h-5 text-primary-glow" />
-            <h3 className="font-display font-bold text-xl">Profil détaillé</h3>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-            <Detail label="Âge" value={`${data.age} ans`} />
-            <Detail label="Poids" value={`${data.weight} kg`} />
-            <Detail label="Taille" value={`${data.height} cm`} />
-            <Detail label="Genre" value={data.gender} className="capitalize" />
-            <Detail label="Objectifs" value={goalsLabel} className="col-span-2" />
-            <Detail label="Sport" value={SPORT_LABEL[data.sport]} />
-            {data.health && <Detail label="Notes santé" value={data.health} className="col-span-2 md:col-span-4" />}
-          </div>
-          <button onClick={reset} className="mt-6 text-xs text-muted-foreground hover:text-foreground underline">
-            Recommencer le diagnostic
-          </button>
-        </div>
-
-        {/* PLAN DÉTAILLÉ */}
-        <section className={`mb-12 transition ${modal ? "blur-sm pointer-events-none" : ""}`}>
-          <div className="text-center mb-8">
-            <p className="text-xs uppercase tracking-[0.3em] text-primary-glow mb-2">Votre programme</p>
-            <h2 className="font-display font-extrabold text-3xl md:text-5xl">Plan nutritionnel détaillé</h2>
-          </div>
-
-          {/* Macros */}
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
-            <MacroCard Icon={Flame} label="Apport cible" value={`${computed.macros.calories.toLocaleString("fr-FR")}`} unit="kcal/jour" tone="accent" />
-            <MacroCard Icon={Beef} label="Protéines" value={`${computed.macros.protein}`} unit="g" />
-            <MacroCard Icon={Wheat} label="Glucides" value={`${computed.macros.carbs}`} unit="g" />
-            <MacroCard Icon={Droplet} label="Lipides" value={`${computed.macros.fats}`} unit="g" />
-          </div>
-
-          {/* Répartition journalière */}
-          <div className="rounded-3xl glass p-8 md:p-10 mb-8">
-            <h3 className="font-display font-bold text-xl mb-6 flex items-center gap-3">
-              <CalendarDays className="w-5 h-5 text-primary-glow" /> Répartition journalière type
-            </h3>
-            <div className="grid md:grid-cols-4 gap-4">
-              <Meal Icon={Sunrise} title="Petit-déj" pct={25} cal={Math.round(computed.macros.calories * 0.25)} sample="Avoine, fruits rouges, œufs, café" />
-              <Meal Icon={Sun} title="Déjeuner" pct={35} cal={Math.round(computed.macros.calories * 0.35)} sample="Protéine maigre, riz complet, légumes verts" />
-              <Meal Icon={Apple} title="Collation" pct={15} cal={Math.round(computed.macros.calories * 0.15)} sample="Yaourt grec, oléagineux, fruit" />
-              <Meal Icon={Moon} title="Dîner" pct={25} cal={Math.round(computed.macros.calories * 0.25)} sample="Poisson/tofu, patate douce, salade" />
+        {activeTab === "overview" && (
+          <>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {[
+                { icon: Activity, label: "IMC", value: computed.bmi.toFixed(1), sub: bmiCategory },
+                { icon: Flame, label: "TDEE", value: computed.tdee.toLocaleString(), sub: "kcal/jour" },
+                { icon: Target, label: "Objectif", value: computed.targetCal.toLocaleString(), sub: "kcal/jour" },
+                { icon: Clock, label: "Durée", value: computed.duration, sub: "adaptée à votre profil" },
+              ].map((s, i) => (
+                <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                  className="rounded-3xl glass p-6 shadow-card text-center">
+                  <s.icon className="w-6 h-6 text-primary-glow mx-auto mb-3" />
+                  <p className="font-display font-extrabold text-3xl">{s.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+                  <p className="text-xs text-accent mt-0.5">{s.sub}</p>
+                </motion.div>
+              ))}
             </div>
-          </div>
 
-          {/* Programme hebdo */}
-          <div className="rounded-3xl glass p-8 md:p-10 mb-8">
-            <h3 className="font-display font-bold text-xl mb-6 flex items-center gap-3">
-              <Activity className="w-5 h-5 text-accent" /> Semaine type d'entraînement
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
-              {weekDays.map((d, i) => (
-                <div key={d} className="rounded-2xl bg-surface border border-border p-4 text-center">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">{d}</p>
-                  <p className="font-semibold text-sm">{trainingFor(i)}</p>
+            <div className="grid lg:grid-cols-3 gap-6 mb-8">
+              <div className="rounded-3xl glass p-6 shadow-card">
+                <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-primary-glow" /> Score du jour
+                </h3>
+                <div className="text-center mb-4">
+                  <span className="font-display font-extrabold text-5xl text-gradient-accent">{readinessScore}%</span>
+                </div>
+                <div className="space-y-2">
+                  {dailyTasks.map(t => (
+                    <div key={t.id} onClick={() => toggleTask(t.id)}
+                      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition border ${
+                        t.done ? "bg-gradient-emerald/20 border-primary/30" : "bg-surface border-border hover:border-primary/30"
+                      }`}>
+                      <span className={`text-sm font-semibold ${t.done ? "text-primary line-through" : ""}`}>{t.label}</span>
+                      <span className="text-xs text-muted-foreground">{t.target}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 rounded-3xl glass p-6 shadow-card">
+                <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary-glow" /> Projection {computed.duration}
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={projectionData}>
+                      <defs>
+                        <linearGradient id="cp" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.018 165 / 30%)" />
+                      <XAxis dataKey="week" stroke="#6b7280" fontSize={12} interval={Math.floor(projectionData.length / 10)} />
+                      <YAxis stroke="#6b7280" fontSize={12} />
+                      <Tooltip contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #10B981", borderRadius: "8px" }} />
+                      <Area type="monotone" dataKey="poids" stroke="#10B981" strokeWidth={2} fill="url(#cp)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              {[
+                { label: "Protéines", value: computed.proteinG, unit: "g", pct: protPct, color: "bg-gradient-emerald" },
+                { label: "Glucides", value: computed.carbsG, unit: "g", pct: carbPct, color: "bg-gradient-accent" },
+                { label: "Lipides", value: computed.fatsG, unit: "g", pct: fatPct, color: "bg-blue-500" },
+              ].map(m => (
+                <div key={m.label} className="rounded-3xl glass p-5 shadow-card text-center">
+                  <p className="text-xs text-muted-foreground">{m.label}</p>
+                  <p className="font-display font-extrabold text-2xl mt-1">{m.value}{m.unit}</p>
+                  <div className="h-2 bg-surface rounded-full mt-2 overflow-hidden">
+                    <div className={`h-full ${m.color} rounded-full`} style={{ width: `${m.pct}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{m.pct}%</p>
                 </div>
               ))}
             </div>
-          </div>
+          </>
+        )}
 
-          {/* Phases du plan */}
-          <div className="rounded-3xl glass p-8 md:p-10">
-            <h3 className="font-display font-bold text-xl mb-6">Phases sur {computed.duration} semaines</h3>
-            <div className="grid md:grid-cols-3 gap-4">
-              <Phase n={1} title="Adaptation" weeks={`Semaines 1–${Math.max(1, Math.round(computed.duration / 3))}`} desc="Rééquilibrage métabolique, mise en place des macros et hydratation cible." />
-              <Phase n={2} title="Progression" weeks={`Semaines ${Math.round(computed.duration / 3) + 1}–${Math.round((computed.duration / 3) * 2)}`} desc="Intensification de la charge nutritionnelle et sportive selon vos objectifs." />
-              <Phase n={3} title="Consolidation" weeks={`Semaines ${Math.round((computed.duration / 3) * 2) + 1}–${computed.duration}`} desc="Stabilisation des résultats et automatisation des habitudes long terme." />
+        {activeTab === "meals" && mealPlan && (
+          <div className="space-y-4">
+            <h3 className="font-display font-bold text-2xl mb-4 flex items-center gap-2">
+              <ChefHat className="w-6 h-6 text-accent" /> Plan repas • {computed.duration}
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              {mealPlan.meals.map((meal, idx) => (
+                <motion.div key={idx} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
+                  className="rounded-3xl glass shadow-card overflow-hidden group">
+                  <div className="h-40 overflow-hidden">
+                    <img src={meal.image} alt={meal.recipe} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs text-accent font-bold uppercase">{meal.time}</span>
+                      <span className="text-xs bg-surface px-2 py-1 rounded-full">{meal.calories} kcal</span>
+                    </div>
+                    <p className="font-bold text-lg">{meal.recipe}</p>
+                    <p className="text-muted-foreground text-sm mt-1">{meal.details}</p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </div>
-        </section>
+        )}
 
-        {/* CTA — recevoir le plan */}
-        <div className={`transition ${modal ? "blur-sm pointer-events-none" : ""}`}>
-          <div className="text-center mb-6">
-            <p className="text-xs uppercase tracking-[0.3em] text-accent mb-2">Aller plus loin</p>
-            <h3 className="font-display font-extrabold text-2xl md:text-3xl">Recevez le plan complet à conserver</h3>
-            <p className="text-muted-foreground text-sm mt-2">PDF détaillé, recettes, suivi quotidien — par WhatsApp ou email.</p>
+        {data.health && (
+          <div className="mt-8 rounded-3xl glass p-5 border border-destructive/30 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+            <p className="text-muted-foreground text-sm">{data.health}</p>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <button
-              onClick={() => setModal("wa")}
-              className="group rounded-2xl bg-gradient-accent text-accent-foreground p-6 text-left shadow-accent hover:scale-[1.02] transition-transform"
-            >
-              <MessageCircle className="w-6 h-6 mb-3" />
-              <p className="font-display font-extrabold text-2xl mb-1">Recevoir sur WhatsApp</p>
-              <p className="text-sm opacity-80">Plan détaillé envoyé en PDF + suivi quotidien</p>
-            </button>
-            <button
-              onClick={() => setModal("email")}
-              className="group rounded-2xl glass p-6 text-left hover:bg-surface-elevated transition-colors"
-            >
-              <Mail className="w-6 h-6 mb-3 text-primary-glow" />
-              <p className="font-display font-extrabold text-2xl mb-1">Recevoir par Email</p>
-              <p className="text-sm text-muted-foreground">Synthèse complète avec macros et calendrier</p>
-            </button>
-          </div>
+        )}
+
+        <div className="flex justify-center gap-4 mt-10">
+          <Link to="/diagnostic" className="inline-flex items-center gap-2 rounded-xl glass px-5 py-3 text-sm font-semibold hover:bg-surface transition">
+            <ArrowLeft className="w-4 h-4" /> Refaire le diagnostic
+          </Link>
         </div>
       </div>
-
-      {/* Modal */}
-      <AnimatePresence>
-        {modal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 grid place-items-center p-4 bg-background/70 backdrop-blur-xl"
-            onClick={() => !submitting && !done && setModal(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-3xl glass p-8 shadow-glow relative overflow-hidden"
-            >
-              <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-emerald opacity-20 blur-3xl rounded-full" />
-              {done ? (
-                <div className="text-center py-6 relative">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-emerald grid place-items-center mx-auto mb-4 shadow-glow">
-                    <Check className="w-7 h-7 text-primary-foreground" />
-                  </div>
-                  <h3 className="font-display font-extrabold text-2xl mb-2">Plan en route</h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    {modal === "wa" ? "WhatsApp s'ouvre dans un nouvel onglet." : "Vous recevrez votre plan par email d'ici 5 minutes."}
-                  </p>
-                  <button onClick={() => { setModal(null); setDone(false); }} className="rounded-xl bg-gradient-emerald text-primary-foreground px-5 py-2.5 font-semibold">
-                    Fermer
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-4 text-xs uppercase tracking-[0.25em] text-accent">
-                    <Sparkles className="w-3.5 h-3.5" /> Capture sécurisée
-                  </div>
-                  <h3 className="font-display font-extrabold text-2xl mb-1">
-                    {modal === "wa" ? "Envoi WhatsApp" : "Envoi Email"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Vos données sont chiffrées. Aucune revente.
-                  </p>
-                  <div className="space-y-3">
-                    <Input label="Nom" value={name} onChange={setName} error={errors.name} />
-                    <Input label="Email" value={email} onChange={setEmail} type="email" error={errors.email} />
-                    <Input label="WhatsApp" value={wa} onChange={setWa} placeholder="+33 6 12 34 56 78" error={errors.whatsapp} />
-                  </div>
-                  {errors.form && <p className="text-destructive text-xs mt-3">{errors.form}</p>}
-                  <button
-                    onClick={() => handleSubmit(modal)}
-                    disabled={submitting}
-                    className="w-full mt-6 rounded-xl bg-gradient-accent text-accent-foreground py-3 font-bold shadow-accent disabled:opacity-50"
-                  >
-                    {submitting ? "Envoi…" : modal === "wa" ? "Recevoir sur WhatsApp" : "Recevoir par Email"}
-                  </button>
-                  <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-4">
-                    <Lock className="w-3 h-3" /> Connexion chiffrée bout-en-bout
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function MetricCard({ label, value, sub, subColor = "text-muted-foreground", formula, highlight }: { label: string; value: string; sub: string; subColor?: string; formula: string; highlight?: boolean }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-      className={`rounded-3xl p-8 relative overflow-hidden ${highlight ? "bg-gradient-emerald shadow-glow text-primary-foreground" : "glass"}`}
-    >
-      {highlight && <div className="absolute top-0 right-0 w-40 h-40 bg-accent/20 blur-3xl rounded-full" />}
-      <p className={`text-xs uppercase tracking-[0.25em] mb-3 ${highlight ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{label}</p>
-      <p className="font-display font-extrabold text-5xl md:text-6xl tracking-tight">{value}</p>
-      <p className={`mt-2 font-semibold ${highlight ? "text-accent" : subColor}`}>{sub}</p>
-      <p className={`mt-4 text-xs ${highlight ? "text-primary-foreground/60" : "text-muted-foreground"}`}>{formula}</p>
-    </motion.div>
-  );
-}
-
-function MacroCard({ Icon, label, value, unit, tone }: { Icon: typeof Flame; label: string; value: string; unit: string; tone?: "accent" }) {
-  return (
-    <div className={`rounded-2xl p-6 border ${tone === "accent" ? "bg-gradient-accent text-accent-foreground border-transparent shadow-accent" : "glass border-border"}`}>
-      <Icon className={`w-6 h-6 mb-3 ${tone === "accent" ? "" : "text-primary-glow"}`} />
-      <p className={`text-xs uppercase tracking-[0.2em] mb-2 ${tone === "accent" ? "text-accent-foreground/80" : "text-muted-foreground"}`}>{label}</p>
-      <p className="font-display font-extrabold text-3xl">{value}</p>
-      <p className={`text-xs mt-1 ${tone === "accent" ? "text-accent-foreground/70" : "text-muted-foreground"}`}>{unit}</p>
-    </div>
-  );
-}
-
-function Meal({ Icon, title, pct, cal, sample }: { Icon: typeof Sun; title: string; pct: number; cal: number; sample: string }) {
-  return (
-    <div className="rounded-2xl bg-surface border border-border p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className="w-4 h-4 text-accent" />
-        <p className="font-display font-bold">{title}</p>
-        <span className="ml-auto text-xs text-muted-foreground">{pct}%</span>
-      </div>
-      <p className="font-display font-extrabold text-2xl">{cal.toLocaleString("fr-FR")} <span className="text-xs text-muted-foreground font-sans font-normal">kcal</span></p>
-      <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{sample}</p>
-    </div>
-  );
-}
-
-function Phase({ n, title, weeks, desc }: { n: number; title: string; weeks: string; desc: string }) {
-  return (
-    <div className="rounded-2xl bg-surface border border-border p-6 relative overflow-hidden">
-      <p className="absolute top-3 right-4 font-display font-extrabold text-5xl text-primary/10">0{n}</p>
-      <p className="text-xs uppercase tracking-[0.2em] text-primary-glow mb-2">{weeks}</p>
-      <p className="font-display font-bold text-lg mb-2">{title}</p>
-      <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-    </div>
-  );
-}
-
-function Detail({ label, value, className = "" }: { label: string; value: string; className?: string }) {
-  return (
-    <div className={className}>
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1">{label}</p>
-      <p className="font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function Input({ label, value, onChange, type = "text", placeholder, error }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; error?: string }) {
-  return (
-    <div>
-      <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1.5 block">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full rounded-xl bg-surface border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-glow ${error ? "border-destructive" : "border-border"}`}
-      />
-      {error && <p className="text-destructive text-xs mt-1">{error}</p>}
     </div>
   );
 }

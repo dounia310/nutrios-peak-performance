@@ -1,18 +1,48 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Dumbbell, Footprints, Heart, Waves, Target, TrendingDown, Zap, Sparkles, Check, PersonStanding } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Dumbbell,
+  Footprints,
+  Heart,
+  Waves,
+  Target,
+  TrendingDown,
+  Zap,
+  Sparkles,
+  Check,
+  User,
+  PersonStanding,
+  Plus,
+  AlertTriangle,
+  Pill,
+  Stethoscope,
+  Bone,
+  Activity,
+} from "lucide-react";
 import { saveDiagnostic, type Goal, type Sport, type Gender } from "@/lib/diagnostic";
+
+
 
 export const Route = createFileRoute("/diagnostic")({
   head: () => ({
     meta: [
       { title: "Diagnostic interactif — NutriOs" },
-      { name: "description", content: "Assistant multi-étapes pour générer votre profil métabolique : âge, poids, taille, objectif, sport et contexte santé." },
+      { name: "description", content: "Assistant multi-étapes pour générer votre profil métabolique : nom, objectif, âge, poids, taille, sport et contexte santé." },
     ],
   }),
   component: Diagnostic,
 });
+export interface DiagnosticData {
+  goal: string; // "perte" | "muscle" | "endurance" | "bien-etre"
+  sport?: string;
+  // ... autres champs existants
+  startDate?: string; // Date de début du plan
+  endDate?: string;   // Date de fin calculée
+  totalWeeks?: number; // Durée totale en semaines
+}
 
 const goals: { id: Goal; label: string; desc: string; Icon: typeof Target }[] = [
   { id: "perte", label: "Perte de poids", desc: "Réduire la masse grasse", Icon: TrendingDown },
@@ -21,48 +51,84 @@ const goals: { id: Goal; label: string; desc: string; Icon: typeof Target }[] = 
   { id: "bien-etre", label: "Bien-être", desc: "Équilibre global", Icon: Sparkles },
 ];
 
-const sports: { id: Sport; label: string; Icon: typeof Dumbbell }[] = [
+const sports: { id: Sport | "autre"; label: string; Icon: typeof Dumbbell }[] = [
   { id: "musculation", label: "Musculation", Icon: Dumbbell },
   { id: "running", label: "Running", Icon: Footprints },
-  { id: "walking", label: "Marche active", Icon: PersonStanding },
+  { id: "marche", label: "Marche", Icon: PersonStanding },
   { id: "yoga", label: "Yoga", Icon: Heart },
   { id: "natation", label: "Natation", Icon: Waves },
+  { id: "autre", label: "Autre", Icon: Plus },
+];
+
+const healthOptions: { id: string; label: string; Icon: typeof AlertTriangle }[] = [
+  { id: "allergies", label: "Allergies alimentaires", Icon: AlertTriangle },
+  { id: "intolerances", label: "Intolérances", Icon: AlertTriangle },
+  { id: "blessures", label: "Blessures", Icon: Bone },
+  { id: "traitements", label: "Traitements médicaux", Icon: Pill },
+  { id: "chronique", label: "Maladie chronique", Icon: Stethoscope },
+  { id: "digestif", label: "Troubles digestifs", Icon: Activity },
+  { id: "articulaire", label: "Douleurs articulaires", Icon: Bone },
 ];
 
 function Diagnostic() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
+  const [goal, setGoal] = useState<Goal | "">("");
   const [age, setAge] = useState<number | "">("");
   const [weight, setWeight] = useState<number | "">("");
   const [height, setHeight] = useState<number | "">("");
   const [gender, setGender] = useState<Gender | "">("");
-  const [selectedGoals, setSelectedGoals] = useState<Goal[]>([]);
   const [sport, setSport] = useState<Sport | "">("");
-  const [health, setHealth] = useState("");
+  const [customSport, setCustomSport] = useState("");
+  const [selectedHealth, setSelectedHealth] = useState<string[]>([]);
+  const [customHealth, setCustomHealth] = useState("");
+  const [showCustomHealth, setShowCustomHealth] = useState(false);
 
-  const total = 4;
+  const total = 5;
+
   const canNext =
-    (step === 0 && age && weight && height && gender) ||
-    (step === 1 && selectedGoals.length > 0) ||
-    (step === 2 && sport) ||
-    step === 3;
+    (step === 0 && name.trim()) ||
+    (step === 1 && goal) ||
+    (step === 2 && age && weight && height && gender) ||
+    (step === 3 && (sport === "autre" ? customSport.trim() !== "" : sport !== "")) ||
+    step === 4;
 
-  const toggleGoal = (id: Goal) => {
-    setSelectedGoals((prev) => {
-      if (prev.includes(id)) return prev.filter((g) => g !== id);
-      if (prev.length >= 2) return [prev[1], id]; // garder max 2 (FIFO)
-      return [...prev, id];
-    });
+  const toggleHealthOption = (id: string) => {
+    setSelectedHealth((prev) =>
+      prev.includes(id) ? prev.filter((h) => h !== id) : [...prev, id]
+    );
   };
 
   const next = () => {
     if (step < total - 1) setStep(step + 1);
     else {
+      const healthData = [
+        ...selectedHealth,
+        ...(showCustomHealth && customHealth.trim() ? [customHealth.trim()] : []),
+      ].join(" ; ");
+
       saveDiagnostic({
-        age: Number(age), weight: Number(weight), height: Number(height),
-        gender: gender as Gender, goals: selectedGoals, sport: sport as Sport, health,
+        name: name.trim(),
+        age: Number(age),
+        weight: Number(weight),
+        height: Number(height),
+        gender: gender as Gender,
+        goal: goal as Goal,
+        sport: sport === "autre" ? (customSport.trim() as Sport) : (sport as Sport),
+        health: healthData,
       });
       navigate({ to: "/results" });
+    }
+  };
+
+  const handleSportSelect = (id: Sport | "autre") => {
+    if (id === "autre") {
+      setSport("autre");
+      setCustomSport("");
+    } else {
+      setSport(id);
+      setCustomSport("");
     }
   };
 
@@ -73,7 +139,7 @@ function Diagnostic() {
         <div className="mb-12">
           <div className="flex items-center justify-between text-xs uppercase tracking-[0.25em] text-muted-foreground mb-3">
             <span>Étape {step + 1} / {total}</span>
-            <span>{["Physique", "Objectif", "Sport", "Santé"][step]}</span>
+            <span>{["Identité", "Objectif", "Physique", "Sport", "Santé"][step]}</span>
           </div>
           <div className="h-1 bg-surface rounded-full overflow-hidden">
             <motion.div
@@ -94,7 +160,66 @@ function Diagnostic() {
             transition={{ duration: 0.4 }}
             className="rounded-3xl glass p-8 md:p-12 shadow-card"
           >
+            {/* Étape 0 : Nom */}
             {step === 0 && (
+              <>
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-emerald/20 mb-6">
+                    <User className="w-10 h-10 text-primary-glow" />
+                  </div>
+                  <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Bienvenue</h2>
+                  <p className="text-muted-foreground">Pour commencer, comment devons-nous vous appeler ?</p>
+                </div>
+                <div className="max-w-md mx-auto">
+                  <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Votre prénom</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ex : Thomas"
+                    maxLength={50}
+                    className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-glow text-center"
+                    autoFocus
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Étape 1 : Objectif */}
+            {step === 1 && (
+              <>
+                <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">
+                  {name ? `${name}, quel est votre objectif ?` : "Votre objectif"}
+                </h2>
+                <p className="text-muted-foreground mb-8">Un seul cap pour calibrer le plan.</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {goals.map((g) => {
+                    const active = goal === g.id;
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => setGoal(g.id)}
+                        className={`text-left rounded-2xl p-6 border transition-all relative overflow-hidden group ${
+                          active
+                            ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow"
+                            : "border-border bg-surface hover:border-primary-glow"
+                        }`}
+                      >
+                        <g.Icon className={`w-7 h-7 mb-4 ${active ? "text-accent" : "text-primary-glow"}`} />
+                        <p className="font-display font-bold text-lg">{g.label}</p>
+                        <p className={`text-sm mt-1 ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                          {g.desc}
+                        </p>
+                        {active && <Check className="absolute top-4 right-4 w-5 h-5 text-accent" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Étape 2 : Bio-données */}
+            {step === 2 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Bio-données</h2>
                 <p className="text-muted-foreground mb-8">Quatre indicateurs pour cartographier votre métabolisme.</p>
@@ -109,7 +234,11 @@ function Diagnostic() {
                         <button
                           key={g}
                           onClick={() => setGender(g)}
-                          className={`rounded-xl px-4 py-3 text-sm font-semibold capitalize border transition-all ${gender === g ? "bg-gradient-emerald text-primary-foreground border-transparent ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}
+                          className={`rounded-xl px-4 py-3 text-sm font-semibold capitalize border transition-all ${
+                            gender === g
+                              ? "bg-gradient-emerald text-primary-foreground border-transparent ring-glow"
+                              : "border-border bg-surface hover:border-primary-glow"
+                          }`}
                         >
                           {g}
                         </button>
@@ -120,44 +249,23 @@ function Diagnostic() {
               </>
             )}
 
-            {step === 1 && (
-              <>
-                <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Votre objectif</h2>
-                <p className="text-muted-foreground mb-8">Choisissez jusqu'à <span className="text-foreground font-semibold">deux objectifs</span> pour combiner les approches.</p>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {goals.map((g) => {
-                    const active = selectedGoals.includes(g.id);
-                    return (
-                      <button
-                        key={g.id}
-                        onClick={() => toggleGoal(g.id)}
-                        className={`text-left rounded-2xl p-6 border transition-all relative overflow-hidden group ${active ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}
-                      >
-                        <g.Icon className={`w-7 h-7 mb-4 ${active ? "text-accent" : "text-primary-glow"}`} />
-                        <p className="font-display font-bold text-lg">{g.label}</p>
-                        <p className={`text-sm mt-1 ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{g.desc}</p>
-                        {active && <Check className="absolute top-4 right-4 w-5 h-5 text-accent" />}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-muted-foreground mt-4">{selectedGoals.length}/2 sélectionné(s)</p>
-
-              </>
-            )}
-
-            {step === 2 && (
+            {/* Étape 3 : Sport */}
+            {step === 3 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Votre discipline</h2>
                 <p className="text-muted-foreground mb-8">Le sport principal pratiqué cette saison.</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
                   {sports.map((s) => {
-                    const active = sport === s.id;
+                    const active = sport === s.id && s.id !== "autre";
                     return (
                       <button
                         key={s.id}
-                        onClick={() => setSport(s.id)}
-                        className={`aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 border transition-all ${active ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}
+                        onClick={() => handleSportSelect(s.id)}
+                        className={`aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 border transition-all ${
+                          active
+                            ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow"
+                            : "border-border bg-surface hover:border-primary-glow"
+                        }`}
                       >
                         <s.Icon className={`w-8 h-8 ${active ? "text-accent" : "text-primary-glow"}`} />
                         <span className="font-semibold text-sm">{s.label}</span>
@@ -165,27 +273,102 @@ function Diagnostic() {
                     );
                   })}
                 </div>
+                {/* Champ de saisie pour "Autre" */}
+                {sport === "autre" && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="max-w-md mx-auto"
+                  >
+                    <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">
+                      Précisez votre sport
+                    </label>
+                    <input
+                      type="text"
+                      value={customSport}
+                      onChange={(e) => setCustomSport(e.target.value)}
+                      placeholder="Ex : CrossFit, Tennis, Escalade..."
+                      maxLength={50}
+                      className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-glow text-center"
+                      autoFocus
+                    />
+                  </motion.div>
+                )}
               </>
             )}
 
-            {step === 3 && (
+            {/* Étape 4 : Santé */}
+            {step === 4 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Contexte santé</h2>
-                <p className="text-muted-foreground mb-8">Allergies, intolérances, blessures, traitements (optionnel).</p>
-                <textarea
-                  value={health}
-                  onChange={(e) => setHealth(e.target.value)}
-                  rows={6}
-                  maxLength={1000}
-                  placeholder="Ex : intolérance au lactose, tendinite récurrente au genou droit, supplémentation en fer…"
-                  className="w-full rounded-2xl bg-surface border border-border p-5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary-glow resize-none"
-                />
+                <p className="text-muted-foreground mb-6">Sélectionnez tout ce qui vous concerne (optionnel).</p>
+                <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                  {healthOptions.map((option) => {
+                    const active = selectedHealth.includes(option.id);
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => toggleHealthOption(option.id)}
+                        className={`flex items-center gap-3 rounded-xl p-4 border transition-all text-left ${
+                          active
+                            ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow"
+                            : "border-border bg-surface hover:border-primary-glow"
+                        }`}
+                      >
+                        <option.Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-accent" : "text-primary-glow"}`} />
+                        <span className="font-semibold text-sm">{option.label}</span>
+                        {active && <Check className="w-4 h-4 ml-auto flex-shrink-0 text-accent" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Option "Autre" pour la santé */}
+                <div className="max-w-md mx-auto">
+                  {!showCustomHealth ? (
+                    <button
+                      onClick={() => setShowCustomHealth(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border px-5 py-4 text-sm font-semibold text-muted-foreground hover:border-primary-glow hover:text-foreground transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Ajouter un autre contexte santé
+                    </button>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                    >
+                      <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">
+                        Précisez
+                      </label>
+                      <div className="relative">
+                        <textarea
+                          value={customHealth}
+                          onChange={(e) => setCustomHealth(e.target.value)}
+                          rows={3}
+                          maxLength={500}
+                          placeholder="Ex : intolérance au lactose, tendinite récurrente au genou droit, supplémentation en fer…"
+                          className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-glow resize-none"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => {
+                            setShowCustomHealth(false);
+                            setCustomHealth("");
+                          }}
+                          className="absolute top-3 right-3 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
               </>
             )}
           </motion.div>
         </AnimatePresence>
 
-        {/* Nav */}
+        {/* Navigation */}
         <div className="flex justify-between mt-8">
           <button
             onClick={() => setStep(Math.max(0, step - 1))}
