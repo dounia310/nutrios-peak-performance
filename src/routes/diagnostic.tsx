@@ -1,26 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect } from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
-  Dumbbell,
-  Footprints,
-  Heart,
-  Waves,
-  Target,
-  TrendingDown,
-  Zap,
-  Sparkles,
-  Check,
-  User,
-  PersonStanding,
-  Plus,
-  AlertTriangle,
-  Pill,
-  Stethoscope,
-  Bone,
-  Activity,
+  ArrowLeft, ArrowRight, Dumbbell, Footprints, Heart, Waves,
+  Target, TrendingDown, Zap, Sparkles, Check, User, PersonStanding,
+  Plus, AlertTriangle, Pill, Stethoscope, Bone, Activity,
 } from "lucide-react";
 import { saveDiagnostic, type Goal, type Sport, type Gender } from "@/lib/diagnostic";
 
@@ -30,19 +16,11 @@ export const Route = createFileRoute("/diagnostic")({
   head: () => ({
     meta: [
       { title: "Diagnostic interactif — NutriOs" },
-      { name: "description", content: "Assistant multi-étapes pour générer votre profil métabolique : nom, objectif, âge, poids, taille, sport et contexte santé." },
+      { name: "description", content: "Assistant multi-étapes pour générer votre profil métabolique." },
     ],
   }),
   component: Diagnostic,
 });
-export interface DiagnosticData {
-  goal: string; // "perte" | "muscle" | "endurance" | "bien-etre"
-  sport?: string;
-  // ... autres champs existants
-  startDate?: string; // Date de début du plan
-  endDate?: string;   // Date de fin calculée
-  totalWeeks?: number; // Durée totale en semaines
-}
 
 const goals: { id: Goal; label: string; desc: string; Icon: typeof Target }[] = [
   { id: "perte", label: "Perte de poids", desc: "Réduire la masse grasse", Icon: TrendingDown },
@@ -85,6 +63,30 @@ function Diagnostic() {
   const [customHealth, setCustomHealth] = useState("");
   const [showCustomHealth, setShowCustomHealth] = useState(false);
 
+  useEffect(() => {
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      // Pas connecté → rediriger vers login
+      navigate({ to: "/login" });
+      return;
+    }
+    
+    // Connecté → vérifier s'il a déjà un diagnostic
+    const { data: existingDiag } = await supabase
+      .from("diagnostics")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1);
+    
+    if (existingDiag && existingDiag.length > 0) {
+      navigate({ to: "/results" });
+    }
+  };
+  checkAuth();
+}, []);
+
   const total = 5;
 
   const canNext =
@@ -100,9 +102,10 @@ function Diagnostic() {
     );
   };
 
-  const next = () => {
-    if (step < total - 1) setStep(step + 1);
-    else {
+  const next = async () => {
+    if (step < total - 1) {
+      setStep(step + 1);
+    } else {
       const healthData = [
         ...selectedHealth,
         ...(showCustomHealth && customHealth.trim() ? [customHealth.trim()] : []),
@@ -118,7 +121,13 @@ function Diagnostic() {
         sport: sport === "autre" ? (customSport.trim() as Sport) : (sport as Sport),
         health: healthData,
       });
-      navigate({ to: "/results" });
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        navigate({ to: "/results" });
+      } else {
+        navigate({ to: "/login" });
+      }
     }
   };
 
@@ -135,7 +144,6 @@ function Diagnostic() {
   return (
     <div className="min-h-screen pt-32 pb-20">
       <div className="mx-auto max-w-3xl px-6">
-        {/* Progress */}
         <div className="mb-12">
           <div className="flex items-center justify-between text-xs uppercase tracking-[0.25em] text-muted-foreground mb-3">
             <span>Étape {step + 1} / {total}</span>
@@ -160,7 +168,6 @@ function Diagnostic() {
             transition={{ duration: 0.4 }}
             className="rounded-3xl glass p-8 md:p-12 shadow-card"
           >
-            {/* Étape 0 : Nom */}
             {step === 0 && (
               <>
                 <div className="text-center mb-8">
@@ -172,20 +179,13 @@ function Diagnostic() {
                 </div>
                 <div className="max-w-md mx-auto">
                   <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Votre prénom</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ex : Thomas"
-                    maxLength={50}
-                    className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-glow text-center"
-                    autoFocus
-                  />
+                  <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+                    placeholder="Ex : Thomas" maxLength={50}
+                    className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-glow text-center" autoFocus />
                 </div>
               </>
             )}
 
-            {/* Étape 1 : Objectif */}
             {step === 1 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">
@@ -196,20 +196,11 @@ function Diagnostic() {
                   {goals.map((g) => {
                     const active = goal === g.id;
                     return (
-                      <button
-                        key={g.id}
-                        onClick={() => setGoal(g.id)}
-                        className={`text-left rounded-2xl p-6 border transition-all relative overflow-hidden group ${
-                          active
-                            ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow"
-                            : "border-border bg-surface hover:border-primary-glow"
-                        }`}
-                      >
+                      <button key={g.id} onClick={() => setGoal(g.id)}
+                        className={`text-left rounded-2xl p-6 border transition-all relative overflow-hidden group ${active ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}>
                         <g.Icon className={`w-7 h-7 mb-4 ${active ? "text-accent" : "text-primary-glow"}`} />
                         <p className="font-display font-bold text-lg">{g.label}</p>
-                        <p className={`text-sm mt-1 ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                          {g.desc}
-                        </p>
+                        <p className={`text-sm mt-1 ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{g.desc}</p>
                         {active && <Check className="absolute top-4 right-4 w-5 h-5 text-accent" />}
                       </button>
                     );
@@ -218,7 +209,6 @@ function Diagnostic() {
               </>
             )}
 
-            {/* Étape 2 : Bio-données */}
             {step === 2 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Bio-données</h2>
@@ -231,15 +221,8 @@ function Diagnostic() {
                     <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Genre</label>
                     <div className="grid grid-cols-2 gap-2">
                       {(["homme", "femme"] as Gender[]).map((g) => (
-                        <button
-                          key={g}
-                          onClick={() => setGender(g)}
-                          className={`rounded-xl px-4 py-3 text-sm font-semibold capitalize border transition-all ${
-                            gender === g
-                              ? "bg-gradient-emerald text-primary-foreground border-transparent ring-glow"
-                              : "border-border bg-surface hover:border-primary-glow"
-                          }`}
-                        >
+                        <button key={g} onClick={() => setGender(g)}
+                          className={`rounded-xl px-4 py-3 text-sm font-semibold capitalize border transition-all ${gender === g ? "bg-gradient-emerald text-primary-foreground border-transparent ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}>
                           {g}
                         </button>
                       ))}
@@ -249,7 +232,6 @@ function Diagnostic() {
               </>
             )}
 
-            {/* Étape 3 : Sport */}
             {step === 3 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Votre discipline</h2>
@@ -258,46 +240,25 @@ function Diagnostic() {
                   {sports.map((s) => {
                     const active = sport === s.id && s.id !== "autre";
                     return (
-                      <button
-                        key={s.id}
-                        onClick={() => handleSportSelect(s.id)}
-                        className={`aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 border transition-all ${
-                          active
-                            ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow"
-                            : "border-border bg-surface hover:border-primary-glow"
-                        }`}
-                      >
+                      <button key={s.id} onClick={() => handleSportSelect(s.id)}
+                        className={`aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 border transition-all ${active ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}>
                         <s.Icon className={`w-8 h-8 ${active ? "text-accent" : "text-primary-glow"}`} />
                         <span className="font-semibold text-sm">{s.label}</span>
                       </button>
                     );
                   })}
                 </div>
-                {/* Champ de saisie pour "Autre" */}
                 {sport === "autre" && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    className="max-w-md mx-auto"
-                  >
-                    <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">
-                      Précisez votre sport
-                    </label>
-                    <input
-                      type="text"
-                      value={customSport}
-                      onChange={(e) => setCustomSport(e.target.value)}
-                      placeholder="Ex : CrossFit, Tennis, Escalade..."
-                      maxLength={50}
-                      className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-glow text-center"
-                      autoFocus
-                    />
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="max-w-md mx-auto">
+                    <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Précisez votre sport</label>
+                    <input type="text" value={customSport} onChange={(e) => setCustomSport(e.target.value)}
+                      placeholder="Ex : CrossFit, Tennis, Escalade..." maxLength={50}
+                      className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-glow text-center" autoFocus />
                   </motion.div>
                 )}
               </>
             )}
 
-            {/* Étape 4 : Santé */}
             {step === 4 && (
               <>
                 <h2 className="font-display font-extrabold text-3xl md:text-4xl mb-2">Contexte santé</h2>
@@ -306,59 +267,31 @@ function Diagnostic() {
                   {healthOptions.map((option) => {
                     const active = selectedHealth.includes(option.id);
                     return (
-                      <button
-                        key={option.id}
-                        onClick={() => toggleHealthOption(option.id)}
-                        className={`flex items-center gap-3 rounded-xl p-4 border transition-all text-left ${
-                          active
-                            ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow"
-                            : "border-border bg-surface hover:border-primary-glow"
-                        }`}
-                      >
-                        <option.Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-accent" : "text-primary-glow"}`} />
+                      <button key={option.id} onClick={() => toggleHealthOption(option.id)}
+                        className={`flex items-center gap-3 rounded-xl p-4 border transition-all text-left ${active ? "border-transparent bg-gradient-emerald text-primary-foreground ring-glow" : "border-border bg-surface hover:border-primary-glow"}`}>
+                        <option.Icon className={`w-5 h-5 shrink-0 ${active ? "text-accent" : "text-primary-glow"}`} />
                         <span className="font-semibold text-sm">{option.label}</span>
-                        {active && <Check className="w-4 h-4 ml-auto flex-shrink-0 text-accent" />}
+                        {active && <Check className="w-4 h-4 ml-auto shrink-0 text-accent" />}
                       </button>
                     );
                   })}
                 </div>
-                {/* Option "Autre" pour la santé */}
                 <div className="max-w-md mx-auto">
                   {!showCustomHealth ? (
-                    <button
-                      onClick={() => setShowCustomHealth(true)}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border px-5 py-4 text-sm font-semibold text-muted-foreground hover:border-primary-glow hover:text-foreground transition-all"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Ajouter un autre contexte santé
+                    <button onClick={() => setShowCustomHealth(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border px-5 py-4 text-sm font-semibold text-muted-foreground hover:border-primary-glow hover:text-foreground transition-all">
+                      <Plus className="w-4 h-4" /> Ajouter un autre contexte santé
                     </button>
                   ) : (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                    >
-                      <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">
-                        Précisez
-                      </label>
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                      <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Précisez</label>
                       <div className="relative">
-                        <textarea
-                          value={customHealth}
-                          onChange={(e) => setCustomHealth(e.target.value)}
-                          rows={3}
-                          maxLength={500}
-                          placeholder="Ex : intolérance au lactose, tendinite récurrente au genou droit, supplémentation en fer…"
-                          className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-glow resize-none"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => {
-                            setShowCustomHealth(false);
-                            setCustomHealth("");
-                          }}
-                          className="absolute top-3 right-3 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Annuler
-                        </button>
+                        <textarea value={customHealth} onChange={(e) => setCustomHealth(e.target.value)}
+                          rows={3} maxLength={500}
+                          placeholder="Ex : intolérance au lactose, tendinite récurrente..."
+                          className="w-full rounded-xl bg-surface border border-border px-5 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-glow resize-none" autoFocus />
+                        <button onClick={() => { setShowCustomHealth(false); setCustomHealth(""); }}
+                          className="absolute top-3 right-3 text-xs text-muted-foreground hover:text-foreground">Annuler</button>
                       </div>
                     </motion.div>
                   )}
@@ -368,20 +301,13 @@ function Diagnostic() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Navigation */}
         <div className="flex justify-between mt-8">
-          <button
-            onClick={() => setStep(Math.max(0, step - 1))}
-            disabled={step === 0}
-            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold border border-border disabled:opacity-30 hover:bg-surface transition"
-          >
+          <button onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold border border-border disabled:opacity-30 hover:bg-surface transition">
             <ArrowLeft className="w-4 h-4" /> Retour
           </button>
-          <button
-            onClick={next}
-            disabled={!canNext}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-accent text-accent-foreground px-6 py-3 text-sm font-bold shadow-accent disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.03] transition-transform"
-          >
+          <button onClick={next} disabled={!canNext}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-accent text-accent-foreground px-6 py-3 text-sm font-bold shadow-accent disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.03] transition-transform">
             {step === total - 1 ? "Calculer mon profil" : "Continuer"} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -395,13 +321,9 @@ function Field({ label, suffix, value, onChange }: { label: string; suffix: stri
     <div>
       <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">{label}</label>
       <div className="relative">
-        <input
-          type="number"
-          value={value}
+        <input type="number" value={value}
           onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
-          className="w-full rounded-xl bg-surface border border-border px-4 py-3.5 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-glow"
-          placeholder="—"
-        />
+          className="w-full rounded-xl bg-surface border border-border px-4 py-3.5 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-glow" placeholder="—" />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground uppercase tracking-wider">{suffix}</span>
       </div>
     </div>
