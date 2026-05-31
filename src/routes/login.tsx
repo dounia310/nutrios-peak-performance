@@ -3,6 +3,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -41,11 +42,19 @@ function Login() {
 
   const handleOAuthLogin = async (provider: "google" | "azure" | "apple") => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/diagnostic` },
-    });
-    if (error) setError(error.message);
+    if (provider === "google") {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/diagnostic`,
+      });
+      if (result.error) setError(result.error.message);
+      if (!result.redirected && !result.error) navigate({ to: "/diagnostic" });
+    } else {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/diagnostic` },
+      });
+      if (error) setError(error.message);
+    }
     setLoading(false);
   };
 
