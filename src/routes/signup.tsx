@@ -50,11 +50,19 @@ function SignUp() {
 
   const handleOAuthSignUp = async (provider: "google" | "azure" | "apple") => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/diagnostic` },
-    });
-    if (error) setError(error.message);
+    if (provider === "google") {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/diagnostic`,
+      });
+      if (result.error) setError(result.error.message);
+      if (!result.redirected && !result.error) navigate({ to: "/diagnostic" });
+    } else {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/diagnostic` },
+      });
+      if (error) setError(error.message);
+    }
     setLoading(false);
   };
 
