@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import {
   Activity, Target, Flame, ChefHat, Clock, Brain,
   TrendingUp, AlertTriangle, ArrowLeft, Circle, CheckCircle2,
-  Dumbbell, Footprints, Heart, Waves, Zap, Calendar, Clock as ClockIcon
+  Dumbbell, Clock as ClockIcon, Footprints, Heart, Zap,
+  Play, Check
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -24,11 +25,7 @@ export const Route = createFileRoute("/results")({
 
 // ==================== API SERVICES ====================
 
-// TheMealDB API - 100% gratuit
 const MEALDB_BASE_URL = 'https://www.themealdb.com/api/json/v1/1';
-
-// Wger API - 100% gratuite, sans clé
-const WGER_BASE_URL = 'https://github.com/wger-project/wger';
 
 interface Meal {
   idMeal: string;
@@ -55,24 +52,122 @@ interface Meal {
 interface Exercise {
   id: string;
   name: string;
-  level: string;
-  primaryMuscles: string[];
-  secondaryMuscles: string[];
-  instructions: string[];
-  equipment: string;
-  sets: string;
-  reps: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  description?: string;
-  type?: 'cardio' | 'strength' | 'stretch' | 'warmup';
+  muscleGroup: 'chest_triceps' | 'back_biceps' | 'legs_shoulders' | 'cardio' | 'fullbody' | 'stretch';
+  sets?: string;
+  reps?: string;
   duration?: string;
+  description: string;
+  equipment: string;
+  image?: string;
+  iconColor?: string;
 }
 
 interface WeeklyWorkout {
   day: string;
+  dayIndex: number;
+  focus: string;
   exercises: Exercise[];
   totalDuration: string;
+}
+
+// ==================== BASE DE DONNÉES D'EXERCICES STRUCTURÉE ====================
+
+const EXERCISES_BY_MUSCLE: Record<string, Exercise[]> = {
+  chest_triceps: [
+    { id: "chest1", name: "Pompes", muscleGroup: "chest_triceps", sets: "3-4", reps: "8-12", description: "Mains largeur épaules, descendre poitrine au sol", equipment: "poids du corps", image: "https://images.unsplash.com/photo-1566241440091-ec10e8d9c5b5?w=400&h=300&fit=crop", iconColor: "text-blue-500" },
+    { id: "chest2", name: "Développé couché haltères", muscleGroup: "chest_triceps", sets: "4", reps: "8-10", description: "Allongé sur banc, haltères au dessus des épaules", equipment: "haltères", iconColor: "text-blue-500" },
+    { id: "chest3", name: "Extensions triceps poulie", muscleGroup: "chest_triceps", sets: "3", reps: "12-15", description: "Coudes au corps, descendre la barre", equipment: "poulie ou élastique", iconColor: "text-blue-500" },
+  ],
+  back_biceps: [
+    { id: "back1", name: "Tractions", muscleGroup: "back_biceps", sets: "3", reps: "max", description: "Prise pronation, tirer jusqu'au menton", equipment: "barre", iconColor: "text-purple-500" },
+    { id: "back2", name: "Rowing buste penché", muscleGroup: "back_biceps", sets: "4", reps: "10-12", description: "Dos droit, tirer la barre vers le bas ventre", equipment: "barre", iconColor: "text-purple-500" },
+    { id: "back3", name: "Curl biceps", muscleGroup: "back_biceps", sets: "3", reps: "10-12", description: "Coudes fixes, monter les haltères", equipment: "haltères", iconColor: "text-purple-500" },
+  ],
+  legs_shoulders: [
+    { id: "legs1", name: "Squats", muscleGroup: "legs_shoulders", sets: "4", reps: "10-12", description: "Pieds largeur épaules, descendre comme sur une chaise", equipment: "poids du corps ou barre", image: "https://images.unsplash.com/photo-1566241440091-ec10e8d9c5b5?w=400&h=300&fit=crop", iconColor: "text-green-500" },
+    { id: "legs2", name: "Fentes", muscleGroup: "legs_shoulders", sets: "3", reps: "10-12 par jambe", description: "Grand pas en avant, genou arrière proche du sol", equipment: "poids du corps", iconColor: "text-green-500" },
+    { id: "legs3", name: "Développé épaules", muscleGroup: "legs_shoulders", sets: "4", reps: "8-10", description: "Haltères à hauteur des oreilles, pousser vers le haut", equipment: "haltères", iconColor: "text-green-500" },
+  ],
+  cardio: [
+    { id: "cardio1", name: "Course à pied", muscleGroup: "cardio", duration: "20-30 min", description: "Allure modérée, respirer profondément", equipment: "aucun", iconColor: "text-red-500" },
+    { id: "cardio2", name: "Vélo elliptique", muscleGroup: "cardio", duration: "25 min", description: "Résistance modérée, cadence soutenue", equipment: "vélo elliptique", iconColor: "text-red-500" },
+    { id: "cardio3", name: "Corde à sauter", muscleGroup: "cardio", sets: "5", reps: "1 min", description: "Sauts légers, poignets actifs", equipment: "corde", iconColor: "text-red-500" },
+  ],
+  fullbody: [
+    { id: "full1", name: "Burpees", muscleGroup: "fullbody", sets: "3", reps: "10-15", description: "Squat, pompe, saut vertical", equipment: "aucun", iconColor: "text-orange-500" },
+    { id: "full2", name: "Mountain climbers", muscleGroup: "fullbody", sets: "3", reps: "30 sec", description: "Planche, ramener genoux alternés", equipment: "aucun", iconColor: "text-orange-500" },
+    { id: "full3", name: "Kettlebell swings", muscleGroup: "fullbody", sets: "4", reps: "15", description: "Hanches propulsent la charge", equipment: "kettlebell", iconColor: "text-orange-500" },
+  ],
+  stretch: [
+    { id: "stretch1", name: "Étirement ischio-jambiers", muscleGroup: "stretch", duration: "30 sec", description: "Buste vers l'avant, jambes tendues", equipment: "aucun", iconColor: "text-teal-500" },
+    { id: "stretch2", name: "Étirement quadriceps", muscleGroup: "stretch", duration: "30 sec", description: "Talons aux fessiers, genou au sol", equipment: "aucun", iconColor: "text-teal-500" },
+    { id: "stretch3", name: "Étirement pectoraux", muscleGroup: "stretch", duration: "30 sec", description: "Bras en T contre un mur, rotation", equipment: "aucun", iconColor: "text-teal-500" },
+  ],
+};
+
+// ==================== GÉNÉRATION DU PLANNING HEBDOMADAIRE AVEC SPLIT MUSCULAIRE ====================
+
+function generateWeeklyWorkoutPlan(goal: string, sport: string): WeeklyWorkout[] {
+  let daysPerWeek = 3;
+  if (goal === 'muscle') daysPerWeek = 4;
+  else if (goal === 'endurance') daysPerWeek = 4;
+  else if (goal === 'perte') daysPerWeek = 5;
+
+  const isCardioSport = sport === 'running' || sport === 'natation' || sport === 'marche';
+  
+  const weekStructure: { dayIndex: number; focus: string; muscleGroup: string }[] = [
+    { dayIndex: 0, focus: "Pectoraux & Triceps", muscleGroup: "chest_triceps" },
+    { dayIndex: 1, focus: "Jambes & Épaules", muscleGroup: "legs_shoulders" },
+    { dayIndex: 2, focus: "Dos & Biceps", muscleGroup: "back_biceps" },
+    { dayIndex: 3, focus: "Cardio / Endurance", muscleGroup: "cardio" },
+    { dayIndex: 4, focus: "Full Body", muscleGroup: "fullbody" },
+    { dayIndex: 5, focus: "Mobilité / Récupération", muscleGroup: "stretch" },
+    { dayIndex: 6, focus: "Repos actif", muscleGroup: "stretch" },
+  ];
+
+  const selectedDays = weekStructure.slice(0, daysPerWeek);
+  const weeklyPlan: WeeklyWorkout[] = [];
+  const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+  for (const day of selectedDays) {
+    const muscleGroupKey = day.muscleGroup;
+    const availableExercises = EXERCISES_BY_MUSCLE[muscleGroupKey] || EXERCISES_BY_MUSCLE.fullbody;
+    const shuffled = [...availableExercises].sort(() => 0.5 - Math.random());
+    const nbExercises = muscleGroupKey === 'cardio' ? 2 : 3;
+    const exercises = shuffled.slice(0, nbExercises);
+    
+    let totalMinutes = exercises.reduce((acc, ex) => {
+      if (ex.duration) {
+        const mins = parseInt(ex.duration.match(/\d+/)?.[0] || '15');
+        return acc + mins;
+      } else if (ex.sets && ex.reps) {
+        const setsNum = parseInt(ex.sets.match(/\d+/)?.[0] || '3');
+        return acc + setsNum * 2;
+      }
+      return acc + 10;
+    }, 0);
+    
+    totalMinutes += 8;
+    
+    weeklyPlan.push({
+      day: dayNames[day.dayIndex],
+      dayIndex: day.dayIndex,
+      focus: day.focus,
+      exercises,
+      totalDuration: `${totalMinutes} min`,
+    });
+  }
+
+  if (isCardioSport && goal !== 'muscle') {
+    const cardioDayIndex = weeklyPlan.findIndex(d => d.focus === "Full Body");
+    if (cardioDayIndex !== -1) {
+      weeklyPlan[cardioDayIndex].focus = "Cardio spécifique";
+      weeklyPlan[cardioDayIndex].exercises = EXERCISES_BY_MUSCLE.cardio.slice(0, 2);
+      weeklyPlan[cardioDayIndex].totalDuration = "30-40 min";
+    }
+  }
+
+  return weeklyPlan;
 }
 
 // ==================== FONCTIONS API THEMEALDB ====================
@@ -83,7 +178,6 @@ async function getRandomMealByCategory(category: string): Promise<Meal | null> {
     const data = await response.json();
     const meals = data.meals || [];
     if (meals.length === 0) return null;
-    
     const randomMeal = meals[Math.floor(Math.random() * meals.length)];
     const detailResponse = await fetch(`${MEALDB_BASE_URL}/lookup.php?i=${randomMeal.idMeal}`);
     const detailData = await detailResponse.json();
@@ -101,201 +195,25 @@ async function getFullMealPlan(goal: string): Promise<{ breakfast: Meal | null; 
     endurance: { breakfast: 'Breakfast', lunch: 'Pasta', dinner: 'Seafood', snack: 'Fruit' },
     default: { breakfast: 'Breakfast', lunch: 'Chicken', dinner: 'Vegetarian', snack: 'Dessert' }
   };
-  
   const cats = categories[goal as keyof typeof categories] || categories.default;
-  
   const [breakfast, lunch, dinner, snack] = await Promise.all([
     getRandomMealByCategory(cats.breakfast),
     getRandomMealByCategory(cats.lunch),
     getRandomMealByCategory(cats.dinner),
     getRandomMealByCategory(cats.snack),
   ]);
-  
   return { breakfast, lunch, dinner, snack };
 }
 
-// ==================== FONCTIONS API WGER ====================
+// ==================== COMPOSANTS INTERNES ====================
 
-async function searchWgerExercisesByMuscle(muscleName: string): Promise<any[]> {
-  try {
-    const muscleResponse = await fetch(`${WGER_BASE_URL}/muscle/?name=${encodeURIComponent(muscleName)}`);
-    const muscleData = await muscleResponse.json();
-    if (!muscleData.results || muscleData.results.length === 0) return [];
-    
-    const muscleId = muscleData.results[0].id;
-    const response = await fetch(`${WGER_BASE_URL}/exercise/?muscles=${muscleId}&language=2&limit=30`);
-    const data = await response.json();
-    return data.results || [];
-  } catch (error) {
-    console.error('Erreur Wger API:', error);
-    return [];
-  }
-}
+const CalorieBadge = ({ calories, isTotal = false }: { calories: number; isTotal?: boolean }) => (
+  <div className={`flex items-center gap-1 ${isTotal ? 'px-3 py-1.5' : 'px-2 py-1'} rounded-full ${isTotal ? 'bg-gradient-emerald text-white' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'} font-semibold shadow-sm`}>
+    <Flame className="w-3 h-3 opacity-80" /><span className="text-xs font-bold">{calories} kcal</span>
+  </div>
+);
 
-async function getWgerExerciseDetails(id: number): Promise<any | null> {
-  try {
-    const response = await fetch(`${WGER_BASE_URL}/exercise/${id}`);
-    return await response.json();
-  } catch (error) {
-    console.error('Erreur Wger API details:', error);
-    return null;
-  }
-}
-
-function getWgerImageUrl(exercise: any): string | null {
-  if (exercise.images && exercise.images.length > 0) {
-    const mainImage = exercise.images.find((img: any) => img.is_main);
-    if (mainImage) return `https://wger.de${mainImage.image}`;
-    return `https://wger.de${exercise.images[0].image}`;
-  }
-  return null;
-}
-
-function getWgerVideoUrl(exercise: any): string | null {
-  if (exercise.videos && exercise.videos.length > 0) {
-    const mainVideo = exercise.videos.find((vid: any) => vid.is_main);
-    if (mainVideo) return mainVideo.video;
-    return exercise.videos[0].video;
-  }
-  return null;
-}
-
-// Organiser les exercices par semaine
-const organizeWeeklyWorkouts = (exercises: Exercise[], sport: string, level: string): WeeklyWorkout[] => {
-  let sessionsPerWeek = 3;
-  if (level === 'intermédiaire') sessionsPerWeek = 4;
-  if (level === 'avancé') sessionsPerWeek = 5;
-  
-  const weeklyPlan: WeeklyWorkout[] = [];
-  const daysOrder = ['Lundi', 'Mercredi', 'Vendredi', 'Mardi', 'Jeudi', 'Samedi'];
-  
-  for (let i = 0; i < sessionsPerWeek && i < exercises.length; i++) {
-    const day = daysOrder[i % daysOrder.length];
-    const exercise = exercises[i];
-    
-    weeklyPlan.push({
-      day,
-      exercises: [exercise],
-      totalDuration: exercise.duration || exercise.reps || '30 min'
-    });
-  }
-  
-  return weeklyPlan;
-};
-
-// Fonction principale pour récupérer le programme sportif depuis l'API
-async function getWorkoutPlan(goal: string, sport: string): Promise<{ 
-  title: string; 
-  weeklyPlan: WeeklyWorkout[]; 
-  frequency: string; 
-  duration: string;
-  level: string;
-}> {
-  const level = 'débutant';
-  
-  let muscleTargets: string[] = [];
-  
-  switch (sport) {
-    case 'marche':
-      muscleTargets = ['quadriceps', 'gluteus', 'abdominals'];
-      break;
-    case 'musculation':
-      muscleTargets = ['pectoralis', 'biceps', 'triceps', 'latissimus dorsi', 'quadriceps'];
-      break;
-    case 'running':
-      muscleTargets = ['quadriceps', 'hamstrings', 'calves', 'gluteus'];
-      break;
-    case 'natation':
-      muscleTargets = ['latissimus dorsi', 'deltoid', 'triceps', 'quadriceps'];
-      break;
-    default:
-      muscleTargets = ['quadriceps', 'abdominals', 'pectoralis'];
-  }
-  
-  try {
-    const allExercises: Exercise[] = [];
-    const usedIds = new Set<number>();
-    
-    for (const muscle of muscleTargets) {
-      const exercises = await searchWgerExercisesByMuscle(muscle);
-      for (const ex of exercises) {
-        if (!usedIds.has(ex.id) && allExercises.length < 6) {
-          const details = await getWgerExerciseDetails(ex.id);
-          if (details) {
-            allExercises.push({
-              id: String(details.id),
-              name: details.name,
-              level: details.category?.name === 'Advanced' ? 'avancé' : 
-                     details.category?.name === 'Intermediate' ? 'intermédiaire' : 'débutant',
-              primaryMuscles: details.muscles?.map((m: any) => m.name) || [],
-              secondaryMuscles: details.muscles_secondary?.map((m: any) => m.name) || [],
-              instructions: [details.description?.substring(0, 200) || ''],
-              equipment: details.equipment?.map((e: any) => e.name).join(', ') || 'poids du corps',
-              sets: '3-4',
-              reps: '10-12',
-              imageUrl: getWgerImageUrl(details) || undefined,
-              videoUrl: getWgerVideoUrl(details) || undefined,
-              description: details.description?.substring(0, 150),
-              type: details.category?.name?.includes('Cardio') ? 'cardio' : 'strength',
-              duration: '30 min',
-            });
-            usedIds.add(details.id);
-          }
-        }
-      }
-    }
-    
-    const weeklyPlan = organizeWeeklyWorkouts(allExercises.slice(0, 4), sport, level);
-    
-    let frequency = '';
-    let duration = '';
-    let title = '';
-    
-    switch (level) {
-      case 'débutant':
-        frequency = '2-3 séances/semaine';
-        duration = '30-45 min';
-        break;
-      case 'intermédiaire':
-        frequency = '3-4 séances/semaine';
-        duration = '45-60 min';
-        break;
-      default:
-        frequency = '4-5 séances/semaine';
-        duration = '60-75 min';
-    }
-    
-    switch (goal) {
-      case 'perte':
-        title = `🔥 Programme brûle-graisse - ${SPORT_LABEL[sport as keyof typeof SPORT_LABEL] || sport}`;
-        break;
-      case 'muscle':
-        title = `💪 Programme prise de masse - ${SPORT_LABEL[sport as keyof typeof SPORT_LABEL] || sport}`;
-        break;
-      case 'endurance':
-        title = `🏃‍♂️ Programme endurance - ${SPORT_LABEL[sport as keyof typeof SPORT_LABEL] || sport}`;
-        break;
-      default:
-        title = `🏋️‍♂️ Programme bien-être - ${SPORT_LABEL[sport as keyof typeof SPORT_LABEL] || sport}`;
-    }
-    
-    return { title, weeklyPlan, frequency, duration, level };
-    
-  } catch (error) {
-    console.error('Erreur API Wger:', error);
-    return { 
-      title: `Programme ${goal} - ${SPORT_LABEL[sport as keyof typeof SPORT_LABEL] || sport}`,
-      weeklyPlan: [],
-      frequency: '3 séances/semaine',
-      duration: '30-45 min',
-      level: 'débutant'
-    };
-  }
-}
-
-// ==================== COMPOSANTS UI ====================
-
-// Composant MealCard
+// ==================== COMPOSANT MEAL CARD AMÉLIORÉ (avec animations, lazy loading, ingrédients, YouTube) ====================
 function MealCard({ meal, type }: { meal: Meal; type: string }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const ingredients: string[] = [];
@@ -335,119 +253,97 @@ function MealCard({ meal, type }: { meal: Meal; type: string }) {
   );
 }
 
-// Composant WeeklyWorkoutCard
-function WeeklyWorkoutCard({ weekPlan }: { weekPlan: WeeklyWorkout }) {
-  const [expanded, setExpanded] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  
-  const exercise = weekPlan.exercises[0];
-  const isCardio = exercise?.type === 'cardio' || exercise?.name?.toLowerCase().includes('cardio');
-  const isStrength = exercise?.type === 'strength';
-  
-  const getYouTubeEmbedUrl = (url: string | undefined): string | null => {
-    if (!url) return null;
-    if (url.includes('youtube.com/watch?v=')) {
-      const videoId = url.split('v=')[1]?.split('&')[0];
-      return `https://www.youtube.com/embed/${videoId}`;
-    }
-    if (url.includes('youtu.be/')) {
-      const videoId = url.split('youtu.be/')[1]?.split('?')[0];
-      return `https://www.youtube.com/embed/${videoId}`;
-    }
-    if (url.includes('/embed/')) return url;
-    return null;
-  };
-  
-  const videoUrl = getYouTubeEmbedUrl(exercise?.videoUrl);
+// Icône dynamique selon le groupe musculaire
+const ExerciseIcon = ({ muscleGroup, className }: { muscleGroup: string; className?: string }) => {
+  switch (muscleGroup) {
+    case 'chest_triceps': return <Dumbbell className={`w-4 h-4 ${className || 'text-blue-500'}`} />;
+    case 'back_biceps': return <Zap className={`w-4 h-4 ${className || 'text-purple-500'}`} />;
+    case 'legs_shoulders': return <Footprints className={`w-4 h-4 ${className || 'text-green-500'}`} />;
+    case 'cardio': return <Heart className={`w-4 h-4 ${className || 'text-red-500'}`} />;
+    case 'fullbody': return <Activity className={`w-4 h-4 ${className || 'text-orange-500'}`} />;
+    default: return <Dumbbell className={`w-4 h-4 ${className || 'text-gray-500'}`} />;
+  }
+};
+
+// Carte d'une séance avec cases à cocher
+const WorkoutDayCard = ({ 
+  weekPlan, 
+  isToday, 
+  completedExercises, 
+  onToggleExercise 
+}: { 
+  weekPlan: WeeklyWorkout; 
+  isToday: boolean; 
+  completedExercises: Record<string, boolean>;
+  onToggleExercise: (exerciseId: string) => void;
+}) => {
+  const [isWorkoutActive, setIsWorkoutActive] = useState(false);
+  const dayCompleted = weekPlan.exercises.every(ex => completedExercises[ex.id]);
   
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl glass p-5 shadow-card hover:shadow-lg transition-all duration-300"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-emerald/20 flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-emerald-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-xl">{weekPlan.day}</h3>
-            <p className="text-xs text-muted-foreground">Durée: {weekPlan.totalDuration}</p>
-          </div>
+    <div className={`rounded-2xl glass p-5 shadow-card hover:shadow-lg transition-all duration-300 ${isToday ? 'border-2 border-primary/50 bg-primary/5' : ''}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h4 className="font-display font-bold text-lg">{weekPlan.day}</h4>
+          <p className="text-xs text-muted-foreground">{weekPlan.focus}</p>
         </div>
-        <button 
-          onClick={() => setExpanded(!expanded)}
-          className="text-sm text-emerald-600 hover:text-emerald-700"
-        >
-          {expanded ? 'Voir moins' : 'Voir détails'}
-        </button>
+        <span className="text-xs bg-surface px-2 py-1 rounded-full">{weekPlan.totalDuration}</span>
       </div>
       
-      {/* Image/Video de l'exercice */}
-      {exercise && (
-        <div className="mb-3 rounded-xl overflow-hidden bg-gradient-emerald/10">
-          {exercise.videoUrl ? (
-            <div className="relative aspect-video">
-              <iframe
-                src={videoUrl || exercise.videoUrl}
-                title={exercise.name}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          ) : exercise.imageUrl ? (
-            <img 
-              src={exercise.imageUrl}
-              alt={exercise.name}
-              className={`w-full h-32 object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-              onLoad={() => setImageLoaded(true)}
-            />
-          ) : (
-            <div className="w-full h-32 flex items-center justify-center">
-              {isCardio ? <Heart className="w-12 h-12 text-red-400" /> : <Dumbbell className="w-12 h-12 text-emerald-400" />}
-            </div>
-          )}
-        </div>
+      {isToday && !isWorkoutActive && (
+        <button 
+          onClick={() => setIsWorkoutActive(true)}
+          className="mb-4 w-full py-2 rounded-xl bg-gradient-emerald text-white text-sm font-semibold flex items-center justify-center gap-2 hover:shadow-glow transition"
+        >
+          <Play className="w-4 h-4" /> Démarrer la séance du jour
+        </button>
       )}
       
-      {expanded && exercise && (
-        <div className="space-y-3 mt-3 pt-3 border-t border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <p className="font-semibold text-lg">{exercise.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {exercise.primaryMuscles?.slice(0, 2).join(', ') || 'Full body'} • 
-                Niveau: {exercise.level || 'débutant'} • 
-                Équipement: {exercise.equipment || 'aucun'}
-              </p>
-              <p className="text-xs text-gray-500 mt-2">
-                {exercise.description || exercise.instructions?.[0]?.substring(0, 150)}
-              </p>
-            </div>
-          </div>
-          <div className="flex justify-around pt-2">
-            <div className="text-center">
-              <p className="text-xs text-gray-500">Séries</p>
-              <p className="font-bold text-lg">{exercise.sets || '3'}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500">{isStrength ? 'Reps' : 'Durée'}</p>
-              <p className="font-bold text-lg">{exercise.reps || exercise.duration || '10-12'}</p>
-            </div>
-          </div>
+      <ul className="space-y-3">
+        {weekPlan.exercises.map((ex) => {
+          const isCompleted = completedExercises[ex.id] || false;
+          return (
+            <li key={ex.id} className="flex gap-3 items-start">
+              <div className="relative">
+                {isWorkoutActive || isCompleted ? (
+                  <button 
+                    onClick={() => onToggleExercise(ex.id)}
+                    className="mt-1 focus:outline-none"
+                  >
+                    {isCompleted ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-gray-400 hover:text-primary transition" />
+                    )}
+                  </button>
+                ) : (
+                  <div className="w-5 h-5" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <ExerciseIcon muscleGroup={ex.muscleGroup} className={ex.iconColor} />
+                  <p className="font-semibold text-sm">{ex.name}</p>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {ex.sets && ex.reps ? `${ex.sets} × ${ex.reps}` : ex.duration || ''}
+                  {ex.equipment !== 'aucun' && ex.equipment !== 'poids du corps' && ` • ${ex.equipment}`}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{ex.description}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      
+      {isWorkoutActive && dayCompleted && (
+        <div className="mt-4 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-center text-sm text-green-700 font-semibold flex items-center justify-center gap-2">
+          <Check className="w-4 h-4" /> Séance terminée ! Bravo !
         </div>
       )}
-    </motion.div>
+    </div>
   );
-}
-
-const CalorieBadge = ({ calories, isTotal = false }: { calories: number; isTotal?: boolean }) => (
-  <div className={`flex items-center gap-1 ${isTotal ? 'px-3 py-1.5' : 'px-2 py-1'} rounded-full ${isTotal ? 'bg-gradient-emerald text-white' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'} font-semibold shadow-sm`}>
-    <Flame className="w-3 h-3 opacity-80" /><span className="text-xs font-bold">{calories} kcal</span>
-  </div>
-);
+};
 
 const getProteinMultiplier = (sport: string, goal: string): number => {
   if (sport === "musculation") return goal === "muscle" ? 2.0 : 1.8;
@@ -457,15 +353,17 @@ const getProteinMultiplier = (sport: string, goal: string): number => {
 };
 
 // ==================== COMPOSANT PRINCIPAL ====================
+
 function Results() {
   const navigate = useNavigate();
   const [data, setData] = useState<DiagnosticData | null>(null);
   const [readinessScore, setReadinessScore] = useState(0);
   const [activeTab, setActiveTab] = useState<"overview" | "meals" | "sport">("overview");
   const [apiMealPlan, setApiMealPlan] = useState<{ breakfast: Meal | null; lunch: Meal | null; dinner: Meal | null; snack: Meal | null } | null>(null);
-  const [apiWorkoutPlan, setApiWorkoutPlan] = useState<{ title: string; weeklyPlan: WeeklyWorkout[]; frequency: string; duration: string; level: string } | null>(null);
+  const [workoutPlan, setWorkoutPlan] = useState<WeeklyWorkout[]>([]);
+  const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
   const [isLoadingApiMeals, setIsLoadingApiMeals] = useState(false);
-  const [isLoadingApiExercises, setIsLoadingApiExercises] = useState(false);
+  const [isLoadingExercises, setIsLoadingExercises] = useState(false);
   const [dailyTasks, setDailyTasks] = useState([
     { id: "protein", label: "Protéines", target: "", done: false },
     { id: "water", label: "Hydratation", target: "3L", done: false },
@@ -482,20 +380,42 @@ function Results() {
     setData(d as DiagnosticData);
   }, [navigate]);
 
+  // Génération du planning sportif
   useEffect(() => {
     if (!data) return;
-    const loadApiData = async () => {
+    setIsLoadingExercises(true);
+    setTimeout(() => {
+      const plan = generateWeeklyWorkoutPlan(data.goal, data.sport);
+      setWorkoutPlan(plan);
+      setIsLoadingExercises(false);
+    }, 300);
+  }, [data]);
+
+  // Chargement des repas via API
+  useEffect(() => {
+    if (!data) return;
+    const loadMeals = async () => {
       setIsLoadingApiMeals(true);
       const mealPlan = await getFullMealPlan(data.goal);
       setApiMealPlan(mealPlan);
       setIsLoadingApiMeals(false);
-      setIsLoadingApiExercises(true);
-      const workoutPlan = await getWorkoutPlan(data.goal, data.sport);
-      setApiWorkoutPlan(workoutPlan);
-      setIsLoadingApiExercises(false);
     };
-    loadApiData();
+    loadMeals();
   }, [data]);
+
+  // Persistance des exercices cochés
+  useEffect(() => {
+    const stored = localStorage.getItem('workout_completions');
+    if (stored) setCompletedExercises(JSON.parse(stored));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('workout_completions', JSON.stringify(completedExercises));
+  }, [completedExercises]);
+
+  const toggleExercise = (exerciseId: string) => {
+    setCompletedExercises(prev => ({ ...prev, [exerciseId]: !prev[exerciseId] }));
+  };
 
   const computed = useMemo(() => {
     if (!data) return null;
@@ -579,17 +499,19 @@ function Results() {
   const circleCircumference = 2 * Math.PI * circleRadius;
   const circleOffset = circleCircumference - (readinessScore / 100) * circleCircumference;
 
+  const todayIndex = (new Date().getDay() + 6) % 7;
+
   return (
     <div className="min-h-screen pt-32 pb-20 bg-linear-to-br from-gray-50 to-white dark:from-gray-950 dark:to-gray-900">
       <div className="mx-auto max-w-6xl px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-12">
-          <h1 className="font-display font-extrabold text-4xl md:text-6xl mb-4">Votre <span className="text-gradient">plan {GOAL_LABEL[data.goal]}</span></h1>
-          <p className="text-muted-foreground max-w-xl mx-auto text-lg">{computed.duration} • {computed.targetCal.toLocaleString()} kcal/jour • {SPORT_LABEL[data.sport]}</p>
+          <h1 className="font-display font-extrabold text-4xl md:text-6xl mb-4">Votre <span className="text-gradient">plan {GOAL_LABEL[data.goal as keyof typeof GOAL_LABEL]}</span></h1>
+          <p className="text-muted-foreground max-w-xl mx-auto text-lg">{computed.duration} • {computed.targetCal.toLocaleString()} kcal/jour • {SPORT_LABEL[data.sport as keyof typeof SPORT_LABEL]}</p>
           <div className="flex justify-center gap-3 mt-6">
             {[
               { id: "overview", label: "Dashboard", icon: <Activity className="w-4 h-4" /> },
               { id: "meals", label: "Repas", icon: <ChefHat className="w-4 h-4" /> },
-              { id: "sport", label: "🏋️‍♂️ Sport", icon: <Dumbbell className="w-4 h-4" /> },
+              { id: "sport", label: "Sport", icon: <Dumbbell className="w-4 h-4" /> },
             ].map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
                 className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${activeTab === tab.id ? "bg-gradient-emerald text-primary-foreground shadow-glow" : "glass hover:bg-surface text-muted-foreground"}`}>
@@ -599,6 +521,7 @@ function Results() {
           </div>
         </motion.div>
 
+        {/* Dashboard */}
         {activeTab === "overview" && (
           <>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -680,6 +603,7 @@ function Results() {
           </>
         )}
 
+        {/* Repas - Version améliorée avec MealCard animée */}
         {activeTab === "meals" && (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
@@ -687,7 +611,15 @@ function Results() {
               <CalorieBadge calories={totalStaticCalories} isTotal />
             </div>
             {isLoadingApiMeals ? (
-              <div className="grid md:grid-cols-2 gap-4">{ [1,2,3,4].map(i => (<div key={i} className="rounded-2xl glass p-4 animate-pulse"><div className="h-40 bg-gray-200 dark:bg-gray-700 rounded-xl mb-3" /><div className="h-5 bg-gray-200 rounded w-3/4 mb-2" /><div className="h-4 bg-gray-200 rounded w-1/2" /></div>)) }</div>
+              <div className="grid md:grid-cols-2 gap-4">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="rounded-2xl glass p-4 animate-pulse">
+                    <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded-xl mb-3" />
+                    <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
             ) : apiMealPlan ? (
               <div className="grid md:grid-cols-2 gap-5">
                 {apiMealPlan.breakfast && <MealCard meal={apiMealPlan.breakfast} type="🌅 Petit-déjeuner" />}
@@ -695,31 +627,55 @@ function Results() {
                 {apiMealPlan.dinner && <MealCard meal={apiMealPlan.dinner} type="🌙 Dîner" />}
                 {apiMealPlan.snack && <MealCard meal={apiMealPlan.snack} type="🍎 Collation" />}
               </div>
-            ) : (<div className="text-center py-8 text-muted-foreground"><ChefHat className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Aucune suggestion disponible</p></div>)}
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <ChefHat className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Aucune suggestion disponible</p>
+              </div>
+            )}
           </div>
         )}
 
+        {/* Sport - Planning interactif */}
         {activeTab === "sport" && (
           <div className="space-y-6">
-            {isLoadingApiExercises ? (
-              <div className="space-y-4">{ [1,2,3].map(i => (<div key={i} className="rounded-2xl glass p-5 animate-pulse"><div className="flex gap-4"><div className="w-16 h-16 bg-gray-200 rounded-xl" /><div className="flex-1"><div className="h-5 bg-gray-200 rounded w-3/4 mb-2" /><div className="h-4 bg-gray-200 rounded w-1/2" /></div></div></div>)) }</div>
-            ) : apiWorkoutPlan && apiWorkoutPlan.weeklyPlan.length > 0 ? (
+            {isLoadingExercises ? (
+              <div className="space-y-4">
+                {[1,2,3].map(i => (
+                  <div key={i} className="rounded-2xl glass p-5 animate-pulse">
+                    <div className="flex gap-4">
+                      <div className="w-16 h-16 bg-gray-200 rounded-xl" />
+                      <div className="flex-1">
+                        <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                        <div className="h-4 bg-gray-200 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : workoutPlan.length > 0 ? (
               <>
                 <div className="text-center mb-8">
                   <h3 className="font-display font-bold text-2xl flex items-center justify-center gap-2">
                     <Dumbbell className="w-7 h-7 text-accent" />
-                    {apiWorkoutPlan.title}
+                    Programme personnalisé
                   </h3>
                   <div className="flex justify-center gap-4 mt-2">
-                    <p className="text-muted-foreground">📅 {apiWorkoutPlan.frequency}</p>
-                    <p className="text-muted-foreground">⏱️ {apiWorkoutPlan.duration}/séance</p>
-                    <p className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">🎯 Niveau {apiWorkoutPlan.level}</p>
+                    <p className="text-muted-foreground">📅 {workoutPlan.length} séances / semaine</p>
+                    <p className="text-muted-foreground">⏱️ ~45-60 min / séance</p>
+                    <p className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">🎯 Niveau intermédiaire</p>
                   </div>
                 </div>
                 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {apiWorkoutPlan.weeklyPlan.map((dayPlan, idx) => (
-                    <WeeklyWorkoutCard key={idx} weekPlan={dayPlan} />
+                  {workoutPlan.map((dayPlan, idx) => (
+                    <WorkoutDayCard 
+                      key={idx} 
+                      weekPlan={dayPlan} 
+                      isToday={dayPlan.dayIndex === todayIndex}
+                      completedExercises={completedExercises}
+                      onToggleExercise={toggleExercise}
+                    />
                   ))}
                 </div>
                 
@@ -731,10 +687,10 @@ function Results() {
                     <div>
                       <p className="font-semibold">💡 Conseil personnalisé</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {data.goal === "perte" && `Pour maximiser la perte de poids, respectez vos jours de repos. La récupération est essentielle.`}
-                        {data.goal === "muscle" && `Pour optimiser la prise de muscle, espacez vos séances et dormez 7-8h par nuit.`}
+                        {data.goal === "perte" && "Pour maximiser la perte de poids, respectez vos jours de repos. La récupération est essentielle."}
+                        {data.goal === "muscle" && "Pour optimiser la prise de muscle, espacez vos séances et dormez 7-8h par nuit."}
                         {data.goal === "endurance" && "Augmentez progressivement la durée des sorties longues (+10% par semaine)."}
-                        {data.goal === "bien-etre" && "Concentrez-vous sur la régularité plutôt que l'intensité."}
+                        {data.goal === "bien-etre" && "Concentrez-vous sur la régularité plutôt que sur l'intensité."}
                       </p>
                     </div>
                   </div>
