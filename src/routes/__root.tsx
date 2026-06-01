@@ -70,10 +70,35 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "NutriOs — Diagnostic Médical & Performance Nutrition" },
       { name: "description", content: "Diagnostic nutritionnel de qualité médicale pour athlètes." },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "NutriOs" },
+      { property: "og:title", content: "NutriOs — Diagnostic Médical & Performance Nutrition" },
+      { property: "og:description", content: "Diagnostic nutritionnel de qualité médicale pour athlètes." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.png", type: "image/png" }, // ✅ Favicon ajouté
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "NutriOs",
+          url: "https://plannutrios.lovable.app",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "NutriOs",
+          url: "https://plannutrios.lovable.app",
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,

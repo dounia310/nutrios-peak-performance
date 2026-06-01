@@ -14,8 +14,12 @@ export const Route = createFileRoute("/diagnostic")({
   head: () => ({
     meta: [
       { title: "Diagnostic interactif — NutriOs" },
-      { name: "description", content: "Assistant multi-étapes pour générer votre profil métabolique." },
+      { name: "description", content: "Assistant multi-étapes pour générer votre profil métabolique personnalisé en moins de deux minutes." },
+      { property: "og:title", content: "Diagnostic interactif — NutriOs" },
+      { property: "og:description", content: "Assistant multi-étapes pour générer votre profil métabolique personnalisé en moins de deux minutes." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/diagnostic" },
     ],
+    links: [{ rel: "canonical", href: "https://plannutrios.lovable.app/diagnostic" }],
   }),
   component: Diagnostic,
 });
@@ -140,6 +144,7 @@ function Diagnostic() {
   return (
     <div className="min-h-screen pt-32 pb-20">
       <div className="mx-auto max-w-3xl px-6">
+        <h1 className="sr-only">Votre diagnostic nutritionnel personnalisé</h1>
         <div className="mb-12">
           <div className="flex items-center justify-between text-xs uppercase tracking-[0.25em] text-muted-foreground mb-3">
             <span>Étape {step + 1} / {total}</span>
@@ -174,8 +179,9 @@ function Diagnostic() {
                   <p className="text-muted-foreground">Pour commencer, comment devons-nous vous appeler ?</p>
                 </div>
                 <div className="max-w-md mx-auto">
-                  <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Votre prénom</label>
+                  <label htmlFor="diag-name" className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Votre prénom</label>
                   <input 
+                    id="diag-name"
                     type="text" 
                     value={name} 
                     onChange={(e) => setName(e.target.value)}
@@ -261,8 +267,9 @@ function Diagnostic() {
                 </div>
                 {sport === "autre" && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="max-w-md mx-auto">
-                    <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Précisez votre sport</label>
+                    <label htmlFor="diag-custom-sport" className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Précisez votre sport</label>
                     <input 
+                      id="diag-custom-sport"
                       type="text" 
                       value={customSport} 
                       onChange={(e) => setCustomSport(e.target.value)}
@@ -306,9 +313,10 @@ function Diagnostic() {
                     </button>
                   ) : (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                      <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Précisez</label>
+                      <label htmlFor="diag-custom-health" className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">Précisez</label>
                       <div className="relative">
                         <textarea 
+                          id="diag-custom-health"
                           value={customHealth} 
                           onChange={(e) => setCustomHealth(e.target.value)}
                           rows={3} 
@@ -354,11 +362,13 @@ function Diagnostic() {
 }
 
 function Field({ label, suffix, value, onChange }: { label: string; suffix: string; value: number | ""; onChange: (v: number | "") => void }) {
+  const id = `diag-field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
     <div>
-      <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">{label}</label>
+      <label htmlFor={id} className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2 block">{label}</label>
       <div className="relative">
         <input 
+          id={id}
           type="number" 
           value={value}
           onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}

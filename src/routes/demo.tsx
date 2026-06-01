@@ -7,6 +7,16 @@ import { useState, useRef } from "react";
  const demoVideo = "/demo-video.mp4";
 
 export const Route = createFileRoute("/demo")({
+  head: () => ({
+    meta: [
+      { title: "Démo — NutriOs en action" },
+      { name: "description", content: "Vidéo de démonstration : découvrez comment NutriOs transforme votre diagnostic nutritionnel en un plan personnalisé complet." },
+      { property: "og:title", content: "Démo — NutriOs en action" },
+      { property: "og:description", content: "Vidéo de démonstration : découvrez comment NutriOs transforme votre diagnostic nutritionnel en un plan personnalisé complet." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/demo" },
+    ],
+    links: [{ rel: "canonical", href: "https://plannutrios.lovable.app/demo" }],
+  }),
   component: DemoPage,
 });
 
@@ -66,8 +76,9 @@ function DemoPage() {
       </section>
 
       {/* Video Section */}
-      <section className="py-8 pb-24">
+      <section className="py-8 pb-24" aria-labelledby="demo-video-heading">
         <div className="mx-auto max-w-6xl px-6">
+          <h2 id="demo-video-heading" className="sr-only">Vidéo de démonstration</h2>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -93,12 +104,14 @@ function DemoPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={togglePlay}
+                    aria-label={isPlaying ? "Mettre la vidéo en pause" : "Lancer la lecture de la vidéo"}
                     className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
                   >
                     {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                   </button>
                   <button
                     onClick={toggleMute}
+                    aria-label={isMuted ? "Réactiver le son" : "Couper le son"}
                     className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
                   >
                     {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -106,6 +119,7 @@ function DemoPage() {
                 </div>
                 <button
                   onClick={handleFullscreen}
+                  aria-label="Passer la vidéo en plein écran"
                   className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
                 >
                   <Maximize2 className="w-5 h-5" />
@@ -115,9 +129,10 @@ function DemoPage() {
 
             {/* Play Button Centered */}
             {!isPlaying && (
-              <button
-                onClick={togglePlay}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-6 rounded-full bg-gradient-accent text-accent-foreground shadow-accent hover:scale-110 transition-transform"
+          <button
+            onClick={togglePlay}
+            aria-label="Lancer la lecture de la vidéo"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-6 rounded-full bg-gradient-accent text-accent-foreground shadow-accent hover:scale-110 transition-transform"
               >
                 <Play className="w-8 h-8" fill="currentColor" />
               </button>

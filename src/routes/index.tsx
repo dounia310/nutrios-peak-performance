@@ -12,6 +12,13 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "NutriOs — Votre Nutrition Personnalisée" },
       { name: "description", content: "Plateforme de diagnostic nutritionnel pour tous : bio-diagnostic, synthèse IA et plan personnalisé gratuit." },
+      { property: "og:title", content: "NutriOs — Votre Nutrition Personnalisée" },
+      { property: "og:description", content: "Plateforme de diagnostic nutritionnel pour tous : bio-diagnostic, synthèse IA et plan personnalisé gratuit." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://plannutrios.lovable.app/" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://plannutrios.lovable.app/" },
     ],
   }),
   component: Welcome,

@@ -8,8 +8,12 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Connexion — NutriOs" },
-      { name: "description", content: "Connectez-vous à votre compte NutriOs" },
+      { name: "description", content: "Connectez-vous à votre compte NutriOs pour accéder à votre diagnostic nutritionnel et à votre plan personnalisé." },
+      { property: "og:title", content: "Connexion — NutriOs" },
+      { property: "og:description", content: "Connectez-vous à votre compte NutriOs pour accéder à votre diagnostic nutritionnel et à votre plan personnalisé." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/login" },
     ],
+    links: [{ rel: "canonical", href: "https://plannutrios.lovable.app/login" }],
   }),
   component: Login,
 });
@@ -88,12 +92,13 @@ function Login() {
           {/* Formulaire email/password */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-xs uppercase tracking-[0.15em] font-bold text-gray-400 mb-1.5 block">
+              <label htmlFor="login-email" className="text-xs uppercase tracking-[0.15em] font-bold text-gray-400 mb-1.5 block">
                 Email ou nom d'utilisateur
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -105,12 +110,13 @@ function Login() {
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-[0.15em] font-bold text-gray-400 mb-1.5 block">
+              <label htmlFor="login-password" className="text-xs uppercase tracking-[0.15em] font-bold text-gray-400 mb-1.5 block">
                 Mot de passe
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
+                  id="login-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
