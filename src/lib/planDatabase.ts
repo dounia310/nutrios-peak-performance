@@ -25,7 +25,7 @@ export interface UserPlan {
   end_date: string;
   total_weeks: number;
   current_week: number;
-  status: 'active' | 'completed' | 'abandoned';
+  status: string;
   created_at: string;
   updated_at: string;
 }
@@ -37,7 +37,7 @@ export interface DailyTask {
   day_number: number;
   task_id: string;
   label: string;
-  category: 'nutrition' | 'sport' | 'wellness';
+  category: string;
   icon: string;
   time_slot: string | null;
   completed: boolean;
