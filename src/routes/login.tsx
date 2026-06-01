@@ -3,7 +3,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -35,7 +34,7 @@ function Login() {
     if (signInError) {
       setError(signInError.message);
     } else {
-      navigate({ to: "/results" });
+      navigate({ to: "/diagnostic" });
     }
     setLoading(false);
   };
@@ -43,22 +42,12 @@ function Login() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
-    
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/diagnostic`,
-      });
-
-      if (result && "error" in result && result.error) {
-        throw result.error;
-      }
-      
-      // La redirection se fait automatiquement
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setError(e.message);
-      setLoading(false);
-    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/diagnostic` },
+    });
+    if (error) setError(error.message);
+    setLoading(false);
   };
 
   return (
@@ -96,11 +85,11 @@ function Login() {
             <span className="px-4 bg-white text-gray-400 text-xs font-bold uppercase tracking-wider relative z-10">ou</span>
           </div>
 
-          {/* Formulaire email */}
+          {/* Formulaire email/password */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="text-xs uppercase tracking-[0.15em] font-bold text-gray-400 mb-1.5 block">
-                Email
+                Email ou nom d'utilisateur
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

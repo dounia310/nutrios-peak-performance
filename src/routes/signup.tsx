@@ -3,7 +3,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -50,24 +49,13 @@ function SignUp() {
 
   const handleGoogleSignUp = async () => {
     setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/diagnostic`,
-      });
-
-      if (result && "error" in result && result.error) {
-        throw result.error;
-      }
-
-      if (result && "redirected" in result && result.redirected) {
-        return;
-      }
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    setError("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/diagnostic` },
+    });
+    if (error) setError(error.message);
+    setLoading(false);
   };
 
   return (
@@ -82,7 +70,7 @@ function SignUp() {
             Inscription
           </h1>
 
-          {/* Bouton Google uniquement */}
+          {/* Bouton Google */}
           <div className="space-y-3 mb-6">
             <button
               onClick={handleGoogleSignUp}
@@ -105,7 +93,7 @@ function SignUp() {
             <span className="px-4 bg-white text-gray-400 text-xs font-bold uppercase tracking-wider relative z-10">ou</span>
           </div>
 
-          {/* Formulaire */}
+          {/* Formulaire email/password */}
           <form onSubmit={handleSignUp} className="space-y-4">
             <div>
               <label className="text-xs uppercase tracking-[0.15em] font-bold text-gray-400 mb-1.5 block">
@@ -187,7 +175,6 @@ function SignUp() {
             </button>
           </form>
 
-          {/* Lien vers connexion */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
               Vous avez déjà un compte ?{" "}
