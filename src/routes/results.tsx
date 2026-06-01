@@ -312,6 +312,8 @@ const WorkoutDayCard = ({
                 {isWorkoutActive || isCompleted ? (
                   <button 
                     onClick={() => onToggleExercise(ex.id)}
+                    aria-label={isCompleted ? `Marquer ${ex.name} comme non terminé` : `Marquer ${ex.name} comme terminé`}
+                    aria-pressed={isCompleted}
                     className="mt-1 focus:outline-none"
                   >
                     {isCompleted ? (
@@ -547,7 +549,7 @@ function Results() {
 
             <div className="grid lg:grid-cols-3 gap-6 mb-8">
               <div className="rounded-2xl glass p-6 shadow-card">
-                <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2"><Brain className="w-5 h-5 text-primary-glow" /> Score du jour</h3>
+                <h2 className="font-display font-bold text-lg mb-4 flex items-center gap-2"><Brain className="w-5 h-5 text-primary-glow" /> Score du jour</h2>
                 <div className="flex flex-col items-center justify-center">
                   <div className="relative w-40 h-40 mb-4">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
@@ -573,7 +575,7 @@ function Results() {
               </div>
 
               <div className="lg:col-span-2 rounded-2xl glass p-6 shadow-card">
-                <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-primary-glow" /> Projection {computed.duration}</h3>
+                <h2 className="font-display font-bold text-lg mb-4 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-primary-glow" /> Projection {computed.duration}</h2>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={projectionData}>
@@ -611,7 +613,7 @@ function Results() {
         {activeTab === "meals" && (
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-              <h3 className="font-display font-bold text-2xl flex items-center gap-2"><ChefHat className="w-6 h-6 text-accent" /> Suggestions de repas</h3>
+              <h2 className="font-display font-bold text-2xl flex items-center gap-2"><ChefHat className="w-6 h-6 text-accent" /> Suggestions de repas</h2>
               <CalorieBadge calories={totalStaticCalories} isTotal />
             </div>
             {isLoadingApiMeals ? (
