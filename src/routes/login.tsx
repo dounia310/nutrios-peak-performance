@@ -8,8 +8,12 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Connexion — NutriOs" },
-      { name: "description", content: "Connectez-vous à votre compte NutriOs" },
+      { name: "description", content: "Connectez-vous à votre compte NutriOs pour accéder à votre diagnostic nutritionnel et à votre plan personnalisé." },
+      { property: "og:title", content: "Connexion — NutriOs" },
+      { property: "og:description", content: "Connectez-vous à votre compte NutriOs pour accéder à votre diagnostic nutritionnel et à votre plan personnalisé." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/login" },
     ],
+    links: [{ rel: "canonical", href: "https://plannutrios.lovable.app/login" }],
   }),
   component: Login,
 });

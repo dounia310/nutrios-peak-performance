@@ -8,8 +8,12 @@ export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
       { title: "Mot de passe oublié — NutriOs" },
-      { name: "description", content: "Réinitialisez votre mot de passe NutriOs" },
+      { name: "description", content: "Réinitialisez votre mot de passe NutriOs en quelques secondes grâce au lien de récupération envoyé par email." },
+      { property: "og:title", content: "Mot de passe oublié — NutriOs" },
+      { property: "og:description", content: "Réinitialisez votre mot de passe NutriOs en quelques secondes grâce au lien de récupération envoyé par email." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/forgot-password" },
     ],
+    links: [{ rel: "canonical", href: "https://plannutrios.lovable.app/forgot-password" }],
   }),
   component: ForgotPassword,
 });

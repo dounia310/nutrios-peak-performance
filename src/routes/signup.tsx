@@ -8,8 +8,12 @@ export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
       { title: "Inscription — NutriOs" },
-      { name: "description", content: "Créez votre compte NutriOs" },
+      { name: "description", content: "Créez votre compte NutriOs gratuitement et lancez votre diagnostic nutritionnel personnalisé en moins de 90 secondes." },
+      { property: "og:title", content: "Inscription — NutriOs" },
+      { property: "og:description", content: "Créez votre compte NutriOs gratuitement et lancez votre diagnostic nutritionnel personnalisé en moins de 90 secondes." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/signup" },
     ],
+    links: [{ rel: "canonical", href: "https://plannutrios.lovable.app/signup" }],
   }),
   component: SignUp,
 });

@@ -14,8 +14,12 @@ export const Route = createFileRoute("/diagnostic")({
   head: () => ({
     meta: [
       { title: "Diagnostic interactif — NutriOs" },
-      { name: "description", content: "Assistant multi-étapes pour générer votre profil métabolique." },
+      { name: "description", content: "Assistant multi-étapes pour générer votre profil métabolique personnalisé en moins de deux minutes." },
+      { property: "og:title", content: "Diagnostic interactif — NutriOs" },
+      { property: "og:description", content: "Assistant multi-étapes pour générer votre profil métabolique personnalisé en moins de deux minutes." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/diagnostic" },
     ],
+    links: [{ rel: "canonical", href: "https://plannutrios.lovable.app/diagnostic" }],
   }),
   component: Diagnostic,
 });

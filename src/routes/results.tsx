@@ -18,7 +18,11 @@ export const Route = createFileRoute("/results")({
     meta: [
       { title: "Votre plan — NutriOs" },
       { name: "description", content: "Plan nutritionnel personnalisé avec repas illustrés et programme sportif." },
+      { property: "og:title", content: "Votre plan — NutriOs" },
+      { property: "og:description", content: "Plan nutritionnel personnalisé avec repas illustrés et programme sportif." },
+      { property: "og:url", content: "https://plannutrios.lovable.app/results" },
     ],
+    links: [{ rel: "canonical", href: "https://plannutrios.lovable.app/results" }],
   }),
   component: Results,
 });
