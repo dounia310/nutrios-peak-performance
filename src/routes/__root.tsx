@@ -75,6 +75,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "NutriOs — Diagnostic Médical & Performance Nutrition" },
       { property: "og:description", content: "Diagnostic nutritionnel de qualité médicale pour athlètes." },
       { property: "og:url", content: "https://plannutrios.lovable.app/" },
+      { name: "twitter:title", content: "NutriOs — Diagnostic Médical & Performance Nutrition" },
+      { name: "twitter:description", content: "Diagnostic nutritionnel de qualité médicale pour athlètes." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c0638138-9998-41d7-b2c6-99c63607991a/id-preview-8321c16f--b3e5430d-9f1c-407e-b1c2-9b3ee4fb0b41.lovable.app-1780280483584.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c0638138-9998-41d7-b2c6-99c63607991a/id-preview-8321c16f--b3e5430d-9f1c-407e-b1c2-9b3ee4fb0b41.lovable.app-1780280483584.png" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
