@@ -61,10 +61,25 @@ function Diagnostic() {
   const [customHealth, setCustomHealth] = useState("");
   const [showCustomHealth, setShowCustomHealth] = useState(false);
 
-  // ✅ Désactivé pour tester sans login
   useEffect(() => {
-    console.log("Mode test : pas de vérification d'authentification");
-  }, []);
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate({ to: "/login" });
+      return;
+    }
+    // Optionnel : vérifier si un diagnostic existe déjà (rediriger vers results)
+    const { data: existingDiag } = await supabase
+      .from("diagnostics")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1);
+    if (existingDiag && existingDiag.length > 0) {
+      navigate({ to: "/results" });
+    }
+  };
+  checkAuth();
+}, [navigate]);
 
   const total = 5;
 
@@ -83,29 +98,34 @@ function Diagnostic() {
 
   // ✅ REDIRECTION DIRECTE VERS RESULTS (SANS VÉRIFICATION LOGIN)
   const next = async () => {
-    if (step < total - 1) {
-      setStep(step + 1);
-    } else {
-      const healthData = [
-        ...selectedHealth,
-        ...(showCustomHealth && customHealth.trim() ? [customHealth.trim()] : []),
-      ].join(" ; ");
+  if (step < total - 1) {
+    setStep(step + 1);
+  } else {
+    // Construction de healthData (ajoute cette ligne)
+    const healthData = [
+      ...selectedHealth,
+      ...(showCustomHealth && customHealth.trim() ? [customHealth.trim()] : []),
+    ].join(" ; ");
 
-      saveDiagnostic({
-        name: name.trim(),
-        age: Number(age),
-        weight: Number(weight),
-        height: Number(height),
-        gender: gender as Gender,
-        goal: goal as Goal,
-        sport: sport === "autre" ? (customSport.trim() as Sport) : (sport as Sport),
-        health: healthData,
-      });
+    saveDiagnostic({
+      name: name.trim(),
+      age: Number(age),
+      weight: Number(weight),
+      height: Number(height),
+      gender: gender as Gender,
+      goal: goal as Goal,
+      sport: sport === "autre" ? (customSport.trim() as Sport) : (sport as Sport),
+      health: healthData,
+    });
 
-      // ✅ Redirection directe sans vérification login
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
       navigate({ to: "/results" });
+    } else {
+      navigate({ to: "/login" });
     }
-  };
+  }
+};
 
   const handleSportSelect = (id: Sport | "autre") => {
     if (id === "autre") {

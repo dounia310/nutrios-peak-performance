@@ -42,11 +42,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">This page didn't load</h1>
         <p className="mt-2 text-sm text-muted-foreground">Something went wrong on our end.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button onClick={() => { router.invalidate(); reset(); }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          <button
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
             Try again
           </button>
-          <a href="/" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground">
+          <a
+            href="/"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground"
+          >
             Go home
           </a>
         </div>
@@ -63,7 +71,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "NutriOs — Diagnostic Médical & Performance Nutrition" },
       { name: "description", content: "Diagnostic nutritionnel de qualité médicale pour athlètes." },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicon.png", type: "image/png" }, // ✅ Favicon ajouté
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -74,7 +85,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head><HeadContent /></head>
+      <head>
+        <HeadContent />
+      </head>
       <body>
         {children}
         <Scripts />
@@ -88,14 +101,15 @@ function RootComponent() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
- useEffect(() => {
-  if (!loading && !user) {
-    const path = window.location.pathname;
-    if (path.startsWith("/diagnostic") || path.startsWith("/results")) {
-      router.navigate({ to: "/login" });
+  // ✅ Protection des routes (nécessite connexion)
+  useEffect(() => {
+    if (!loading && !user) {
+      const path = window.location.pathname;
+      if (path.startsWith("/diagnostic") || path.startsWith("/results")) {
+        router.navigate({ to: "/login" });
+      }
     }
-  }
-}, [user, loading]);
+  }, [user, loading, router]);
 
   return (
     <QueryClientProvider client={queryClient}>
